@@ -1,3 +1,4 @@
+import moment from 'moment';
 /** @returns {void} */
 function noop() {}
 
@@ -2753,13 +2754,12 @@ class Draggable {
             clientX: this.offsetPos.x + event.clientX,
             clientY: this.offsetPos.y + event.clientY
         };
-        if (!isLeftClick(event) && !this.settings.modelId) {
+        if (!isLeftClick(event)) {
             return;
-        }
-        if (!this.settings.modelId) {
-            event.stopPropagation();
-            event.preventDefault();
-        }
+		}
+		
+		event.stopPropagation();
+		event.preventDefault();
         const canDrag = this.dragAllowed;
         const canResize = this.resizeAllowed;
         if (canDrag || canResize) {
@@ -2913,8 +2913,7 @@ class Draggable {
         this.offsetPos = { x: null, y: null };
         this.offsetWidth = null;
         this.overRezisedOffset = undefined;
-        if (!this.settings.modelId)
-            window.removeEventListener('mousemove', this.onmousemove, false);
+		window.removeEventListener('mousemove', this.onmousemove, false);
     };
     destroy() {
         this.node.removeEventListener('mousedown', this.onmousedown, false);
@@ -4312,7 +4311,7 @@ class SelectionManager {
         }
         this.selectedTasks.set({ [taskId]: true });
     }
-    toggleSelection(taskId, node) {
+	toggleSelection(taskId, node) {
         this.currentSelection.set(taskId, {
             HTMLElement: node,
             offsetData: undefined,
@@ -5478,10 +5477,11 @@ function create_fragment$5(ctx) {
 					action_destroyer(/*scrollable*/ ctx[47].call(null, div7)),
 					listen(div7, "wheel", /*onwheel*/ ctx[50]),
 					listen(div9, "mousedown", stop_propagation(/*onEvent*/ ctx[46])),
-					listen(div9, "click", stop_propagation(/*onEvent*/ ctx[46])),
+					listen(div9, "click",  ctx[46]),
 					listen(div9, "dblclick", /*onEvent*/ ctx[46]),
 					listen(div9, "mouseover", /*onEvent*/ ctx[46]),
-					listen(div9, "mouseleave", /*onEvent*/ ctx[46])
+					listen(div9, "mouseleave", /*onEvent*/ ctx[46]),
+					listen(div9, "contextmenu", /*onEvent*/ ctx[46])
 				];
 
 				mounted = true;
@@ -5886,7 +5886,7 @@ function instance$5($$self, $$props, $$invalidate) {
 			const column = this.getColumnByPosition(x);
 			x = x - column.left;
 			let positionDuration = column.duration / column.width * x;
-			const date = column.from + positionDuration;
+			const date = moment(column.from).add(positionDuration, "milliseconds");
 			return date;
 		},
 		/**
@@ -5979,9 +5979,10 @@ function instance$5($$self, $$props, $$invalidate) {
 		api.registerEvent('tasks', 'moveEnd');
 		api.registerEvent('tasks', 'change');
 		api.registerEvent('tasks', 'changed');
+		api.registerEvent("tasks", "contextmenu");
+		api.registerEvent('tasks', 'dblclicked');
 		api.registerEvent('gantt', 'viewChanged');
 		api.registerEvent('gantt', 'dateSelected');
-		api.registerEvent('tasks', 'dblclicked');
 		api.registerEvent('timeranges', 'clicked');
 		api.registerEvent('timeranges', 'resized');
 		$$invalidate(99, mounted = true);
@@ -5989,20 +5990,49 @@ function instance$5($$self, $$props, $$invalidate) {
 
 	const { onDelegatedEvent, offDelegatedEvent, onEvent } = createDelegatedEventDispatcher();
 
-	onDelegatedEvent('mousedown', 'data-task-id', (event, data, target) => {
-		const taskId = data;
-
-		if (isLeftClick(event) && !target.classList.contains('sg-task-reflected')) {
+	onDelegatedEvent('click', 'data-task-id', (event, data, target) => {
+		try {
+		  const taskId = data;
+		  const task = $taskStore.entities[taskId];
+		
+		  if (isLeftClick(event) && !target.classList.contains('sg-task-reflected')) {
 			if (event.ctrlKey) {
 				selectionManager.toggleSelection(taskId, target);
 			} else {
 				selectionManager.selectSingle(taskId, target);
 			}
-
+			
 			selectionManager.dispatchSelectionEvent(taskId, event);
+			}
+			const object = {
+				taskId: data,
+				task: task,
+				event: event
+			}
+		  api['tasks'].raise.select(object);
+		} catch (error) {
+			console.error(error)
+		}
+	});
+
+	onDelegatedEvent("contextmenu", "data-task-id", (event, data, target) => {
+		const taskId = data;
+		const task = $taskStore.entities[taskId];
+
+		if (event.ctrlKey) {
+			selectionManager.toggleSelection(taskId);
+		} else {
+			selectionManager.selectSingle(taskId);
 		}
 
-		api['tasks'].raise.select($taskStore.entities[taskId]);
+		const object = {
+			taskId: data,
+			task: task,
+			event: event
+		}
+
+		api.tasks.raise.contextmenu(object);
+		event.preventDefault();
 	});
 
 	onDelegatedEvent('mouseover', 'data-row-id', (event, data, target) => {
@@ -6020,9 +6050,42 @@ function instance$5($$self, $$props, $$invalidate) {
 		set_store_value(selectedRow, $selectedRow = data, $selectedRow);
 	});
 
+	onDelegatedEvent("dblclick", "data-row-id", (event, data, target) => {
+		var targetClasses = target.getAttribute('class');
+		if (targetClasses.indexOf('sg-table-row') > - 1) return;
+
+		var date = columnService.getDateByPosition(event.offsetX);
+
+		const rowId = data;
+		var object = { date: date, rowId: rowId };
+
+		if (event.ctrlKey) {
+			selectionManager.toggleSelection(rowId);
+		} else {
+			selectionManager.selectSingle(rowId);
+		}
+
+		api.rows.raise.dblclicked(object);
+
+		set_store_value(selectedRow, $selectedRow = +data);
+	});
+
 	onDelegatedEvent('dblclick', 'data-task-id', (event, data, target) => {
 		const taskId = data;
-		api['tasks'].raise.dblclicked($taskStore.entities[taskId], event);
+		const task = $taskStore.entities[taskId];
+		if (event.ctrlKey) {
+			selectionManager.toggleSelection(taskId);
+		} else {
+			selectionManager.selectSingle(taskId);
+		}
+		var date = columnService.getDateByPosition(event.layerX);
+		const object = {
+			taskId: data,
+			task: task,
+			event: event,
+			date: date
+		}
+		api['tasks'].raise.dblclicked(object);
 	});
 
 	onDelegatedEvent('mouseleave', 'empty', (event, data, target) => {
@@ -6033,7 +6096,8 @@ function instance$5($$self, $$props, $$invalidate) {
 		offDelegatedEvent('click', 'data-task-id');
 		offDelegatedEvent('click', 'data-row-id');
 		offDelegatedEvent('mousedown', 'data-task-id');
-		offDelegatedEvent('dblclick', 'data-task-id');
+		offDelegatedEvent('dblclicked', 'data-task-id');
+		offDelegatedEvent("dblclicked", "data-row-id");
 		selectionManager.unSelectTasks();
 	});
 
@@ -6853,6 +6917,17 @@ class Gantt extends SvelteComponent {
 	get getTasks() {
 		return this.$$.ctx[98];
 	}
+
+	get customApi() {
+		return {
+			setConfig: (config) => {
+				const defaultConfig = {...StelteGanttScopeHolder.customGanttConfig};
+				StelteGanttScopeHolder.customGanttConfig = {...defaultConfig, ...config};
+			},
+			onRowSelected$: StelteGanttScopeHolder.onRowSelected$,
+			selectedRowEmitter$: StelteGanttScopeHolder.selectedRowEmitter$
+		};
+	}
 }
 
 var css_248z$4 = ".sg-tree-expander.svelte-1tk4vqn{cursor:pointer;min-width:1.4em;display:flex;justify-content:center;align-items:center}.sg-cell-inner.svelte-1tk4vqn{display:flex}";
@@ -7066,7 +7141,6 @@ function instance$4($$self, $$props, $$invalidate) {
 			const data = {
 				model: row.model,
 			}
-	console.log(row.expanded,'expanded');
 			
 			if (row.expanded) {
 				dispatch("rowCollapsed", { row });
@@ -7075,7 +7149,6 @@ function instance$4($$self, $$props, $$invalidate) {
 				dispatch("rowExpanded", { row });
 				row.expanded = true;
 			}
-	console.log(data.model.classes,'class');
 			if (data.model.classes !== "childRow") {
 				if (StelteGanttScopeHolder.virtualScroll.isScroll > 0) {
 					StelteGanttScopeHolder.onRowSelected$.data = data;
@@ -7688,6 +7761,15 @@ function create_fragment$3(ctx) {
 				}
 			}
 
+			const currentDataRow = StelteGanttScopeHolder.onRowSelected$.value();
+			if (currentDataRow) {
+				if (ctx[1].model.id === currentDataRow.model.id) {
+					set_style(div, "background-color", StelteGanttScopeHolder.customGanttConfig.selectedRowHeaderColor);
+				} else {
+					set_style(div, "background-color", "transparent");
+				}
+			}
+
 			current = true;
 		},
 		p(ctx, [dirty]) {
@@ -7740,6 +7822,15 @@ function create_fragment$3(ctx) {
 
 			if (!current || dirty & /*row, $selectedRow, row*/ 18) {
 				toggle_class(div, "sg-selected", /*$selectedRow*/ ctx[4] == /*row*/ ctx[1].model.id);
+			}
+
+			const currentDataRow = StelteGanttScopeHolder.onRowSelected$.value();
+			if (currentDataRow) {
+				if (ctx[1].model.id === currentDataRow.model.id) {
+					set_style(div, "background-color", StelteGanttScopeHolder.customGanttConfig.selectedRowHeaderColor);
+				} else {
+					set_style(div, "background-color", "transparent");
+				}
 			}
 		},
 		i(local) {
@@ -8216,11 +8307,13 @@ function instance$2($$self, $$props, $$invalidate) {
 			}
 		});
 
-		$taskStore.ids.forEach(id => {
-			const task = $taskStore.entities[id];
-			const row = $rowStore.entities[task.model.resourceId];
-			set_store_value(taskStore, $taskStore.entities[id].top = row.y + $rowPadding, $taskStore);
-		});
+		// [custom] performance when expand row
+		
+		// $taskStore.ids.forEach(id => {
+		// 	const task = $taskStore.entities[id];
+		// 	const row = $rowStore.entities[task.model.resourceId];
+		// 	set_store_value(taskStore, $taskStore.entities[id].top = row.y + $rowPadding, $taskStore);
+		// });
 	}
 
 	// if gantt displays a bottom scrollbar and table does not, we need to pad out the table
