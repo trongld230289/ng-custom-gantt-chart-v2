@@ -1,4 +1,3 @@
-import moment from 'moment';
 /** @returns {void} */
 function noop() {}
 
@@ -41,7 +40,7 @@ function is_function(thing) {
 
 /** @returns {boolean} */
 function safe_not_equal(a, b) {
-	return a != a ? b == b : a !== b || ((a && typeof a === 'object') || typeof a === 'function');
+	return a != a ? b == b : a !== b || (a && typeof a === 'object') || typeof a === 'function';
 }
 
 let src_url_equal_anchor;
@@ -126,14 +125,6 @@ function get_slot_changes(definition, $$scope, dirty, fn) {
 	return $$scope.dirty;
 }
 
-function update_slot(slot, slot_definition, ctx, $$scope, dirty, get_slot_changes_fn, get_slot_context_fn) {
-	const slot_changes = get_slot_changes(slot_definition, $$scope, dirty, get_slot_changes_fn);
-	if (slot_changes) {
-		const slot_context = get_slot_context(slot_definition, ctx, $$scope, get_slot_context_fn);
-		slot.p(slot_context, slot_changes);
-	}
-}
-
 /** @returns {void} */
 function update_slot_base(
 	slot,
@@ -181,12 +172,7 @@ function null_to_empty(value) {
 	return value == null ? '' : value;
 }
 
-function set_store_value(store, ret, value = ret) {
-	store.set(value);
-	return ret;
-}
-
-async function set_store_value_async(store, ret, value = ret) {
+function set_store_value(store, ret, value) {
 	store.set(value);
 	return ret;
 }
@@ -318,8 +304,8 @@ function children(element) {
  */
 function set_data(text, data) {
 	data = '' + data;
-	if (text.data !== data)
-		text.data = data;
+	if (text.data === data) return;
+	text.data = /** @type {string} */ (data);
 }
 
 /**
@@ -359,7 +345,7 @@ function is_crossorigin() {
  * @param {() => void} fn
  * @returns {() => void}
  */
-function add_resize_listener(node, fn) {
+function add_iframe_resize_listener(node, fn) {
 	const computed_style = getComputedStyle(node);
 	if (computed_style.position === 'static') {
 		node.style.position = 'relative';
@@ -638,7 +624,7 @@ function createEventDispatcher() {
  */
 function setContext(key, context) {
 	get_current_component().$$.context.set(key, context);
-	// return context;
+	return context;
 }
 
 /**
@@ -1096,8 +1082,7 @@ function init(
 	append_styles = null,
 	dirty = [-1]
 ) {
-	try {
-		const parent_component = current_component;
+	const parent_component = current_component;
 	set_current_component(component);
 	/** @type {import('./private.js').T$$} */
 	const $$ = (component.$$ = {
@@ -1154,9 +1139,6 @@ function init(
 		flush();
 	}
 	set_current_component(parent_component);
-	} catch (error) {
-		console.log(error,'error');
-	}
 }
 
 /**
@@ -1527,9 +1509,9 @@ function createDataStore() {
 
 class TaskFactory {
     // columnService;
-    // rowPadding;
-    // rowEntities;
     constructor(columnService) {
+		this.rowPadding = undefined;
+		this.rowEntities = undefined;
         this.columnService = columnService;
     }
     createTask(model) {
@@ -1600,6 +1582,12 @@ function reflectTask(task, row, options) {
 
 function isLeftClick(event) {
     return event.which === 1;
+}
+function isRightClick(event) {
+    return event.which === 3;
+}
+function isDoubleClick(event) {
+    return event.detail === 2;
 }
 /**
  * Gets mouse position within an element
@@ -1861,8 +1849,7 @@ function create_if_block_1$2(ctx) {
 
 // (266:4) {#if model.labelBottom}
 function create_if_block$6(ctx) {
-	try {
-		let label;
+	let label;
 	let t_value = /*model*/ ctx[0].labelBottom + "";
 	let t;
 
@@ -1885,15 +1872,10 @@ function create_if_block$6(ctx) {
 			}
 		}
 	};
-	} catch (error) {
-		console.log(error,'er');
-	}
-	
 }
 
 function create_fragment$d(ctx) {
-	try {
-		let div1;
+	let div1;
 	let t0;
 	let t1;
 	let div0;
@@ -2101,14 +2083,11 @@ function create_fragment$d(ctx) {
 			run_all(dispose);
 		}
 	};
-	} catch (error) {
-		console.log(error,'er');
-	}
-	
 }
 
 let animating = true;
-
+// [custom] variable to handle right/left click to show popup
+var isMove = false;
 /** How much pixels near the bounds user has to drag to start scrolling */
 const DRAGGING_TO_SCROLL_TRESHOLD = 40;
 
@@ -2234,26 +2213,25 @@ function instance$d($$self, $$props, $$invalidate) {
 				updatePosition(left, top + topDelta, width);
 				const newTask = { ...task, left, width, top, model };
 				const changed = prevFrom != newFrom || prevTo != newTo || sourceRow && sourceRow.model.id !== targetRow.model.id;
-
-				if (changed) {
+				// if (changed) {
 					api.tasks.raise.change({
 						task: newTask,
 						sourceRow,
 						targetRow,
-						previousState
+						previousState,
 					});
-				}
+				// }
 
 				selectionManager.newTasksAndReflections.push(newTask);
 
-				if (changed) {
+				// if (changed) {
 					api.tasks.raise.changed({
 						task: newTask,
 						sourceRow,
 						targetRow,
-						previousState
+						previousState,
 					});
-				}
+				// }
 
 				// update shadow tasks
 				if (newTask.reflections) {
@@ -2310,7 +2288,7 @@ function instance$d($$self, $$props, $$invalidate) {
 					if (event.resizing) {
 						setCursor('e-resize');
 					}
-
+					
 					set_store_value(draggingTaskCache, $draggingTaskCache[model.id] = true, $draggingTaskCache);
 				},
 				onMouseUp: () => {
@@ -2707,31 +2685,207 @@ const MIN_DRAG_Y = 2;
  * Applies dragging interaction to gantt elements
  */
 class Draggable {
-    // mouseStartPosX;
-    // mouseStartPosY;
-    // mouseStartRight;
-    // direction;
-    // dragging = false;
-    // resizing = false;
-    // initialX;
-    // initialY;
-    // initialW;
-    // resizeTriggered = false;
-    // settings;
-    // node;
-    // offsetWidth = null;
-    // overRezisedOffset;
-    constructor(node, settings, offsetData) {
+	constructor(node, settings, offsetData) {
+		this.mouseStartPosX = undefined;
+		this.mouseStartPosY = undefined;
+		this.mouseStartRight = undefined;
+		this.direction = undefined;
+		this.dragging = false;
+		this.resizing = false;
+		this.initialX = undefined;
+		this.initialY = undefined;
+		this.initialW = undefined;
+		this.resizeTriggered = false;
+		this.settings = undefined;
+		this.node = undefined;
 		this.offsetPos = { x: null, y: null };
+		this.offsetWidth = null;
+		this.overRezisedOffset = undefined;
         this.settings = settings;
         this.node = node;
-        if (this.settings.modelId) {
+        // if (this.settings.modelId) {
+        //     this.offsetPos = offsetData.offsetPos;
+        //     this.offsetWidth = offsetData.offsetWidth;
+        // // }
+        // // else {
+        //     node.addEventListener('mousedown', this.onmousedown, { passive: true });
+		// }
+		this.onmousedown = event => {
+			const offsetEvent = {
+				clientX: this.offsetPos.x + event.clientX,
+				clientY: this.offsetPos.y + event.clientY
+			};
+			if (!isLeftClick(event) && !this.settings.modelId) {
+				return;
+			}
+			if (!this.settings.modelId) {
+				event.stopPropagation();
+				event.preventDefault();
+			}
+			const canDrag = this.dragAllowed;
+			const canResize = this.resizeAllowed;
+			if (canDrag || canResize) {
+				const x = this.settings.getX();
+				const y = this.settings.getY();
+				const width = this.settings.getWidth();
+				this.initialX = offsetEvent.clientX;
+				this.initialY = offsetEvent.clientY;
+				this.mouseStartRight = x + width;
+				this.mouseStartPosX = getRelativePos(this.settings.container, offsetEvent).x - x;
+				this.mouseStartPosY = getRelativePos(this.settings.container, offsetEvent).y - y;
+				if (canResize && this.mouseStartPosX <= this.settings.resizeHandleWidth) {
+					this.direction = 'left';
+					this.resizing = true;
+				}
+				if (canResize &&
+					this.mouseStartPosX >= width - this.offsetWidth - this.settings.resizeHandleWidth) {
+					this.direction = 'right';
+					this.resizing = true;
+				}
+				if (canDrag && !this.resizing) {
+					this.dragging = true;
+				}
+				if ((this.dragging || this.resizing) && this.settings.onDown) {
+					this.settings.onDown({
+						mouseEvent: offsetEvent,
+						x,
+						width,
+						y,
+						resizing: this.resizing,
+						dragging: this.dragging,
+					});
+				}
+				if (!this.settings.modelId) {
+					window.addEventListener('mousemove', this.onmousemove, false);
+					addEventListenerOnce(window, 'mouseup', this.onmouseup);
+				}
+			}
+		};
+		this.onmousemove = (event) => {
+			const offsetEvent = {
+				clientX: this.offsetPos.x + event.clientX,
+				clientY: this.offsetPos.y + event.clientY
+			};
+			if (!this.resizeTriggered) {
+				if (Math.abs(offsetEvent.clientX - this.initialX) > MIN_DRAG_X ||
+					Math.abs(offsetEvent.clientY - this.initialY) > MIN_DRAG_Y) {
+					this.resizeTriggered = true;
+				}
+				else {
+					return;
+				}
+			}
+			event.preventDefault();
+			if (this.resizing) {
+				const mousePos = getRelativePos(this.settings.container, offsetEvent);
+				const x = this.settings.getX();
+				const width = this.settings.getWidth();
+				let resultX;
+				let resultWidth;
+				if (this.direction === 'left') {
+					//resize left
+					if (this.overRezisedOffset === 'left') {
+						mousePos.x += this.offsetWidth;
+					}
+					if (this.mouseStartRight - mousePos.x <= 0) {
+						this.direction = 'right';
+						if (this.overRezisedOffset !== 'left') {
+							this.overRezisedOffset = 'right';
+						}
+						else {
+							this.overRezisedOffset = undefined;
+						}
+						resultX = this.mouseStartRight;
+						resultWidth = this.mouseStartRight - mousePos.x;
+						this.mouseStartRight = this.mouseStartRight + width;
+					}
+					else {
+						resultX = mousePos.x;
+						resultWidth = this.mouseStartRight - mousePos.x;
+					}
+				}
+				else if (this.direction === 'right') {
+					//resize right
+					if (this.overRezisedOffset === 'right') {
+						mousePos.x -= this.offsetWidth;
+					}
+					if (mousePos.x - x + this.offsetWidth <= 0) {
+						this.direction = 'left';
+						if (this.overRezisedOffset !== 'right') {
+							this.overRezisedOffset = 'left';
+						}
+						else {
+							this.overRezisedOffset = undefined;
+						}
+						resultX = mousePos.x + this.offsetWidth;
+						resultWidth = mousePos.x - x + this.offsetWidth;
+						this.mouseStartRight = x;
+					}
+					else {
+						resultX = x;
+						resultWidth = mousePos.x - x + this.offsetWidth;
+					}
+				}
+				if (this.settings.onResize) {
+					this.settings.onResize({
+						x: resultX,
+						width: resultWidth,
+						event
+					});
+				}
+			}
+			// mouseup
+			if (this.dragging && this.settings.onDrag) {
+				isMove = true;
+				const mousePos = getRelativePos(this.settings.container, offsetEvent);
+				this.settings.onDrag({
+					x: mousePos.x - this.mouseStartPosX,
+					y: mousePos.y - this.mouseStartPosY,
+					event,
+				});
+			}
+		};
+		this.onmouseup = (event) => {
+			const offsetEvent = {
+				clientX: this.offsetPos.x + event.clientX,
+				clientY: this.offsetPos.y + event.clientY
+			};
+			const x = this.settings.getX();
+			const y = this.settings.getY();
+			const width = this.settings.getWidth();
+			this.settings.onMouseUp && this.settings.onMouseUp();
+			if (this.resizeTriggered && this.settings.onDrop) {
+				this.settings.onDrop({
+					mouseEvent: offsetEvent,
+					x,
+					y,
+					width,
+					dragging: this.dragging,
+					resizing: this.resizing,
+				});
+			}
+			this.mouseStartPosX = null;
+			this.mouseStartPosY = null;
+			this.mouseStartRight = null;
+			this.dragging = false;
+			this.resizing = false;
+			this.initialX = null;
+			this.initialY = null;
+			this.initialW = null;
+			this.resizeTriggered = false;
+			this.offsetPos = { x: null, y: null };
+			this.offsetWidth = null;
+			this.overRezisedOffset = undefined;
+			if (!this.settings.modelId)
+				window.removeEventListener('mousemove', this.onmousemove, false);
+		};
+		 // if (this.settings.modelId) {
             this.offsetPos = offsetData.offsetPos;
             this.offsetWidth = offsetData.offsetWidth;
-        }
-        else {
+        // }
+        // else {
             node.addEventListener('mousedown', this.onmousedown, { passive: true });
-        }
+		// }
     }
     get dragAllowed() {
         if (typeof this.settings.dragAllowed === 'function') {
@@ -2749,172 +2903,7 @@ class Draggable {
             return this.settings.resizeAllowed;
         }
     }
-    onmousedown(event) {
-        const offsetEvent = {
-            clientX: this.offsetPos.x + event.clientX,
-            clientY: this.offsetPos.y + event.clientY
-        };
-        if (!isLeftClick(event)) {
-            return;
-		}
-		
-		event.stopPropagation();
-		event.preventDefault();
-        const canDrag = this.dragAllowed;
-        const canResize = this.resizeAllowed;
-        if (canDrag || canResize) {
-            const x = this.settings.getX();
-            const y = this.settings.getY();
-            const width = this.settings.getWidth();
-            this.initialX = offsetEvent.clientX;
-            this.initialY = offsetEvent.clientY;
-            this.mouseStartRight = x + width;
-            this.mouseStartPosX = getRelativePos(this.settings.container, offsetEvent).x - x;
-            this.mouseStartPosY = getRelativePos(this.settings.container, offsetEvent).y - y;
-            if (canResize && this.mouseStartPosX <= this.settings.resizeHandleWidth) {
-                this.direction = 'left';
-                this.resizing = true;
-            }
-            if (canResize &&
-                this.mouseStartPosX >= width - this.offsetWidth - this.settings.resizeHandleWidth) {
-                this.direction = 'right';
-                this.resizing = true;
-            }
-            if (canDrag && !this.resizing) {
-                this.dragging = true;
-            }
-            if ((this.dragging || this.resizing) && this.settings.onDown) {
-                this.settings.onDown({
-                    mouseEvent: offsetEvent,
-                    x,
-                    width,
-                    y,
-                    resizing: this.resizing,
-                    dragging: this.dragging
-                });
-            }
-            if (!this.settings.modelId) {
-                window.addEventListener('mousemove', this.onmousemove, false);
-                addEventListenerOnce(window, 'mouseup', this.onmouseup);
-            }
-        }
-    };
-    onmousemove(event) {
-        const offsetEvent = {
-            clientX: this.offsetPos.x + event.clientX,
-            clientY: this.offsetPos.y + event.clientY
-        };
-        if (!this.resizeTriggered) {
-            if (Math.abs(offsetEvent.clientX - this.initialX) > MIN_DRAG_X ||
-                Math.abs(offsetEvent.clientY - this.initialY) > MIN_DRAG_Y) {
-                this.resizeTriggered = true;
-            }
-            else {
-                return;
-            }
-        }
-        event.preventDefault();
-        if (this.resizing) {
-            const mousePos = getRelativePos(this.settings.container, offsetEvent);
-            const x = this.settings.getX();
-            const width = this.settings.getWidth();
-            let resultX;
-            let resultWidth;
-            if (this.direction === 'left') {
-                //resize left
-                if (this.overRezisedOffset === 'left') {
-                    mousePos.x += this.offsetWidth;
-                }
-                if (this.mouseStartRight - mousePos.x <= 0) {
-                    this.direction = 'right';
-                    if (this.overRezisedOffset !== 'left') {
-                        this.overRezisedOffset = 'right';
-                    }
-                    else {
-                        this.overRezisedOffset = undefined;
-                    }
-                    resultX = this.mouseStartRight;
-                    resultWidth = this.mouseStartRight - mousePos.x;
-                    this.mouseStartRight = this.mouseStartRight + width;
-                }
-                else {
-                    resultX = mousePos.x;
-                    resultWidth = this.mouseStartRight - mousePos.x;
-                }
-            }
-            else if (this.direction === 'right') {
-                //resize right
-                if (this.overRezisedOffset === 'right') {
-                    mousePos.x -= this.offsetWidth;
-                }
-                if (mousePos.x - x + this.offsetWidth <= 0) {
-                    this.direction = 'left';
-                    if (this.overRezisedOffset !== 'right') {
-                        this.overRezisedOffset = 'left';
-                    }
-                    else {
-                        this.overRezisedOffset = undefined;
-                    }
-                    resultX = mousePos.x + this.offsetWidth;
-                    resultWidth = mousePos.x - x + this.offsetWidth;
-                    this.mouseStartRight = x;
-                }
-                else {
-                    resultX = x;
-                    resultWidth = mousePos.x - x + this.offsetWidth;
-                }
-            }
-            if (this.settings.onResize) {
-                this.settings.onResize({
-                    x: resultX,
-                    width: resultWidth,
-                    event
-                });
-            }
-        }
-        // mouseup
-        if (this.dragging && this.settings.onDrag) {
-            const mousePos = getRelativePos(this.settings.container, offsetEvent);
-            this.settings.onDrag({
-                x: mousePos.x - this.mouseStartPosX,
-                y: mousePos.y - this.mouseStartPosY,
-                event
-            });
-        }
-    };
-    onmouseup(event) {
-        const offsetEvent = {
-            clientX: this.offsetPos.x + event.clientX,
-            clientY: this.offsetPos.y + event.clientY
-        };
-        const x = this.settings.getX();
-        const y = this.settings.getY();
-        const width = this.settings.getWidth();
-        this.settings.onMouseUp && this.settings.onMouseUp();
-        if (this.resizeTriggered && this.settings.onDrop) {
-            this.settings.onDrop({
-                mouseEvent: offsetEvent,
-                x,
-                y,
-                width,
-                dragging: this.dragging,
-                resizing: this.resizing
-            });
-        }
-        this.mouseStartPosX = null;
-        this.mouseStartPosY = null;
-        this.mouseStartRight = null;
-        this.dragging = false;
-        this.resizing = false;
-        this.initialX = null;
-        this.initialY = null;
-        this.initialW = null;
-        this.resizeTriggered = false;
-        this.offsetPos = { x: null, y: null };
-        this.offsetWidth = null;
-        this.overRezisedOffset = undefined;
-		window.removeEventListener('mousemove', this.onmousemove, false);
-    };
+    
     destroy() {
         this.node.removeEventListener('mousedown', this.onmousedown, false);
         this.node.removeEventListener('mousemove', this.onmousemove, false);
@@ -3058,7 +3047,7 @@ function instance$a($$self, $$props, $$invalidate) {
 
 		const draggable = new Draggable(node,
 		{
-				onDown: event => {
+			onDown: event => {
 					api.timeranges.raise.clicked({ model });
 
 					update({
@@ -3309,19 +3298,20 @@ function isUnitFraction(localDate, highlightedDurations) {
 }
 
 class GanttUtils {
-    // from;
-    // to;
-    // width;
-    // magnetOffset;
-    // magnetUnit;
-    // magnetDuration;
-    // dateAdapter;
+    
     /** because gantt width is not always correct */
-    /**BlueFox 09.01.23: couldn't reproduce the above so I removed the code
+    /**BlueFox 09.01.23: couldn't reproduce the above so I removed the code */
     //totalColumnDuration: number;
     //totalColumnWidth: number;
 
-    constructor() {
+	constructor() {
+      this.from = undefined;
+      this.to = undefined;
+      this.width = undefined;
+      this.magnetOffset = undefined;
+      this.magnetUnit = undefined;
+      this.magnetDuration = undefined;
+      this.dateAdapter = undefined;
     }
 
     /**
@@ -4161,11 +4151,9 @@ class Resizer extends SvelteComponent {
 }
 
 class GanttApi {
-    // listeners;
-    // listenersMap;
-    // tasks;
-    // timeranges;
-    constructor() {
+	constructor() {
+		this.tasks = undefined;
+		this.timeranges = undefined;
         this.listeners = [];
         this.listenersMap = {};
     }
@@ -4206,8 +4194,9 @@ class GanttApi {
 }
 
 class RowFactory {
-    // rowHeight;
-    constructor() { }
+	constructor() {
+		this.rowHeight = undefined;
+	 }
     createRow(row, y) {
         // defaults
         // id of task, every task needs to have a unique one
@@ -4223,59 +4212,50 @@ class RowFactory {
         return {
             model: row,
             y,
-            height,
-			expanded: row.expanded ?  row.expanded : false
+			height,
         };
     }
-	createRows(rows) {
-		try {
-			const ctx = { y: 0, result: [] };
-			this.createChildRows(rows, ctx);
-			return ctx.result;
-		} catch (error) {
-			console.log(error,'err');
-		}
+    createRows(rows) {
+        const ctx = { y: 0, result: [] };
+        this.createChildRows(rows, ctx);
+        return ctx.result;
     }
-	createChildRows(rowModels, ctx, parent = null, level = 0, parents = []) {
-		try {
-			const rowsAtLevel = [];
-			const allRows = [];
-			if (parent) {
-				parents = [...parents, parent];
+    createChildRows(rowModels, ctx, parent = null, level = 0, parents = []) {
+        const rowsAtLevel = [];
+        const allRows = [];
+        if (parent) {
+            parents = [...parents, parent];
+        }
+        rowModels.forEach(rowModel => {
+            const row = this.createRow(rowModel, ctx.y);
+            ctx.result.push(row);
+            rowsAtLevel.push(row);
+            allRows.push(row);
+            row.childLevel = level;
+            row.parent = parent;
+			row.allParents = parents;
+			// [custom] collapse/expend mode for row parent have children
+			if (level > 0 && !row.expanded) {
+				row.hidden = true;
 			}
-			rowModels.forEach(rowModel => {
-				const row = this.createRow(rowModel, ctx.y);
-				ctx.result.push(row);
-				rowsAtLevel.push(row);
-				allRows.push(row);
-				row.childLevel = level;
-				row.parent = parent;
-				row.allParents = parents;
-				if (level > 0 && !row.expanded) {
-					row.hidden = true;
-				}
-				else {
-					ctx.y += row.height;  //customctx.y += row.height; for expand
-				}
-				if (rowModel.children) {
-					const nextLevel = this.createChildRows(rowModel.children, ctx, row, level + 1, parents);
-					row.children = nextLevel.rows;
-					row.allChildren = nextLevel.allRows;
-					allRows.push(...nextLevel.allRows);
-				}
-			});
-			return {
-				rows: rowsAtLevel,
-				allRows
-			};
-		} catch (error) {
-			console.log(error,'err');
-		}
+			else {
+				ctx.y += row.height;  //customctx.y += row.height; for expand
+			}
+            if (rowModel.children) {
+                const nextLevel = this.createChildRows(rowModel.children, ctx, row, level + 1, parents);
+                row.children = nextLevel.rows;
+                row.allChildren = nextLevel.allRows;
+                allRows.push(...nextLevel.allRows);
+            }
+        });
+        return {
+            rows: rowsAtLevel,
+            allRows
+        };
     }
 }
 
 class TimeRangeFactory {
-    // columnService;
     constructor(columnService) {
         this.columnService = columnService;
     }
@@ -4294,15 +4274,43 @@ class TimeRangeFactory {
 }
 
 class SelectionManager {
-    // taskStore;
-    // TODO:: figure out why these exist
+	// TODO:: figure out why these exist
     constructor(taskStore) {
+		this.oldReflections = [];
 		this.newTasksAndReflections = [];
 		this.taskSettings = new Map();
 		this.currentSelection = new Map();
 		this.selectedTasks = writable({});
-		this.oldReflections = [];
 		this.taskStore = taskStore;
+
+		this.dragOrResizeTriggered = event => {
+			for (const [selId, selectedItem] of this.currentSelection.entries()) {
+				const draggable = new Draggable(selectedItem.HTMLElement, this.taskSettings.get(selId), selectedItem.offsetData);
+				draggable.onmousedown(event);
+				this.currentSelection.set(selId, { ...selectedItem, draggable: draggable });
+			}
+			window.addEventListener('mousemove', this.selectionDragOrResizing, false);
+			addEventListenerOnce(window, 'mouseup', this.selectionDropped);
+		};
+		this.selectionDragOrResizing = event => {
+			for (const [, selectedItem] of this.currentSelection.entries()) {
+				const { draggable } = selectedItem;
+				draggable.onmousemove(event);
+			}
+		};
+		this.selectionDropped = event => {
+			window.removeEventListener('mousemove', this.selectionDragOrResizing, false);
+			for (const [, selectedItem] of this.currentSelection.entries()) {
+				const { draggable } = selectedItem;
+				draggable.onmouseup(event);
+			}
+			if (this.oldReflections.length)
+				this.taskStore.deleteAll(this.oldReflections);
+			if (this.newTasksAndReflections.length)
+				this.taskStore.upsertAll(this.newTasksAndReflections);
+			this.newTasksAndReflections.splice(0);
+			this.oldReflections.splice(0);
+		};
     }
     selectSingle(taskId, node) {
         if (!this.currentSelection.has(taskId)) {
@@ -4311,7 +4319,7 @@ class SelectionManager {
         }
         this.selectedTasks.set({ [taskId]: true });
     }
-	toggleSelection(taskId, node) {
+    toggleSelection(taskId, node) {
         this.currentSelection.set(taskId, {
             HTMLElement: node,
             offsetData: undefined,
@@ -4354,34 +4362,6 @@ class SelectionManager {
         }
         this.dragOrResizeTriggered(event);
     }
-    dragOrResizeTriggered(event) {
-        for (const [selId, selectedItem] of this.currentSelection.entries()) {
-            const draggable = new Draggable(selectedItem.HTMLElement, this.taskSettings.get(selId), selectedItem.offsetData);
-            draggable.onmousedown(event);
-            this.currentSelection.set(selId, { ...selectedItem, draggable: draggable });
-        }
-        window.addEventListener('mousemove', this.selectionDragOrResizing, false);
-        addEventListenerOnce(window, 'mouseup', this.selectionDropped);
-    };
-    selectionDragOrResizing (event) {
-        for (const [, selectedItem] of this.currentSelection.entries()) {
-            const { draggable } = selectedItem;
-            draggable.onmousemove(event);
-        }
-    };
-    selectionDropped (event) {
-        window.removeEventListener('mousemove', this.selectionDragOrResizing, false);
-        for (const [, selectedItem] of this.currentSelection.entries()) {
-            const { draggable } = selectedItem;
-            draggable.onmouseup(event);
-        }
-        if (this.oldReflections.length)
-            this.taskStore.deleteAll(this.oldReflections);
-        if (this.newTasksAndReflections.length)
-            this.taskStore.upsertAll(this.newTasksAndReflections);
-        this.newTasksAndReflections.splice(0);
-        this.oldReflections.splice(0);
-    };
 }
 // export let draggableTasks: object = {};
 // export let currentSelection: Map<number,HTMLElement> = new Map();
@@ -4443,42 +4423,37 @@ function findByDate(columns, x) {
 }
 
 function createDelegatedEventDispatcher() {
-	try {
-		
-		const callbacks = {};
-		return {
-			onDelegatedEvent(type, attr, callback) {
-				if (!callbacks[type])
-					callbacks[type] = {};
-				callbacks[type][attr] = callback;
-			},
-			offDelegatedEvent(type, attr) {
-				delete callbacks[type][attr];
-			},
-			onEvent(e) {
-				const { type, target } = e;
-				const cbs = callbacks[type];
-				if (!cbs)
-					return;
-				let match;
-				let element = target;
-				while (element && element != e.currentTarget) {
-					if ((match = matches(cbs, element))) {
-						break;
-					}
-					element = element.parentElement;
-				}
-				if (match && cbs[match.attr]) {
-					cbs[match.attr](e, match.data, element);
-				}
-				else if (cbs['empty']) {
-					cbs['empty'](e, null, element);
-				}
-			}
-		};
-	} catch (error) {
-		console.log(error,'err');
-	}
+    const callbacks = {};
+    return {
+        onDelegatedEvent(type, attr, callback) {
+            if (!callbacks[type])
+                callbacks[type] = {};
+            callbacks[type][attr] = callback;
+        },
+        offDelegatedEvent(type, attr) {
+            delete callbacks[type][attr];
+        },
+        onEvent(e) {
+            const { type, target } = e;
+            const cbs = callbacks[type];
+            if (!cbs)
+                return;
+            let match;
+            let element = target;
+            while (element && element != e.currentTarget) {
+                if ((match = matches(cbs, element))) {
+                    break;
+                }
+                element = element.parentElement;
+            }
+            if (match && cbs[match.attr]) {
+                cbs[match.attr](e, match.data, element);
+            }
+            else if (cbs['empty']) {
+                cbs['empty'](e, null, element);
+            }
+        }
+    };
 }
 function matches(cbs, element) {
     let data;
@@ -4490,110 +4465,93 @@ function matches(cbs, element) {
 }
 
 class DefaultSvelteGanttDateAdapter {
-	format(date, format) {
-		try {
-			
-			const d = new Date(date);
-			switch (format) {
-				case 'H':
-					return d.getHours() + '';
-				case 'HH':
-					return pad(d.getHours());
-				case 'H:mm':
-					return `${d.getHours()}:${pad(d.getMinutes())}`;
-				case 'hh:mm':
-					return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-				case 'hh:mm:ss':
-					return `${d.getHours()}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-				case 'dd/MM/yyyy':
-					return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
-				case 'dd/MM/yyyy hh:mm':
-					return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} ${d.getHours()}:${d.getMinutes()}`;
-				case 'dd/MM/yyyy hh:mm:ss':
-					return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} ${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`;
-				// VPY More formats supported 10/12/2021
-				case 'YYYY':
-					return `${d.getFullYear()}`;
-				case 'Q':
-					return `${Math.floor(d.getMonth() / 3 + 1)}`;
-				case '[Q]Q':
-					return `Q${Math.floor(d.getMonth() / 3 + 1)}`;
-				case 'YYYY[Q]Q':
-					return `${d.getFullYear()}Q${Math.floor(d.getMonth() / 3 + 1)}`;
-				case 'MM': {
-					// const month = d.toLocaleString('default', { month: 'long' });
-					let month = String(d.getMonth() + 1);
-					if (month.length == 1)
-						month = `0${month}`;
-					return `${month}`;
-				}
-				case 'MMMM': {
-					const month = d.toLocaleString('default', { month: 'long' });
-					return `${month.charAt(0).toUpperCase()}${month.substring(1)}`;
-				}
-				case 'MMMM - YYYY': {
-					const month = d.toLocaleString('default', { month: 'long' });
-					return `${month.charAt(0).toUpperCase()}${month.substring(1)}-${d.getFullYear()}`;
-				}
-				case 'MMMM YYYY': {
-					const month = d.toLocaleString('default', { month: 'long' });
-					return `${month.charAt(0).toUpperCase()}${month.substring(1)} ${d.getFullYear()}`;
-				}
-				case 'MMM': {
-					const month = d.toLocaleString('default', { month: 'short' });
-					return `${month.charAt(0).toUpperCase()}${month.substring(1)}`;
-				}
-				case 'MMM - YYYY': {
-					const month = d.toLocaleString('default', { month: 'short' });
-					return `${month.charAt(0).toUpperCase()}${month.substring(1)} - ${d.getFullYear()}`;
-				}
-				case 'MMM YYYY': {
-					const month = d.toLocaleString('default', { month: 'short' });
-					return `${month.charAt(0).toUpperCase()}${month.substring(1)} ${d.getFullYear()}`;
-				}
-				case 'W':
-					return `${getWeekNumber(d)}`;
-				case 'WW': {
-					const weeknumber = getWeekNumber(d);
-					return `${weeknumber.toString().length == 1 ? '0' : ''}${weeknumber}`;
-				}
-				default:
-					console.warn(`Date Format '${format}' is not supported, use another date adapter.`);
-					return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
-			}
-		} catch (error) {
-			console.log(error,'err');
-		}
+    format(date, format) {
+        const d = new Date(date);
+        switch (format) {
+            case 'H':
+                return d.getHours() + '';
+            case 'HH':
+                return pad(d.getHours());
+            case 'H:mm':
+                return `${d.getHours()}:${pad(d.getMinutes())}`;
+            case 'hh:mm':
+                return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            case 'hh:mm:ss':
+                return `${d.getHours()}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+            case 'dd/MM/yyyy':
+                return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+            case 'dd/MM/yyyy hh:mm':
+                return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} ${d.getHours()}:${d.getMinutes()}`;
+            case 'dd/MM/yyyy hh:mm:ss':
+                return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} ${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`;
+            // VPY More formats supported 10/12/2021
+            case 'YYYY':
+                return `${d.getFullYear()}`;
+            case 'Q':
+                return `${Math.floor(d.getMonth() / 3 + 1)}`;
+            case '[Q]Q':
+                return `Q${Math.floor(d.getMonth() / 3 + 1)}`;
+            case 'YYYY[Q]Q':
+                return `${d.getFullYear()}Q${Math.floor(d.getMonth() / 3 + 1)}`;
+            case 'MM': {
+                // const month = d.toLocaleString('default', { month: 'long' });
+                let month = String(d.getMonth() + 1);
+                if (month.length == 1)
+                    month = `0${month}`;
+                return `${month}`;
+            }
+            case 'MMMM': {
+                const month = d.toLocaleString('default', { month: 'long' });
+                return `${month.charAt(0).toUpperCase()}${month.substring(1)}`;
+            }
+            case 'MMMM - YYYY': {
+                const month = d.toLocaleString('default', { month: 'long' });
+                return `${month.charAt(0).toUpperCase()}${month.substring(1)}-${d.getFullYear()}`;
+            }
+            case 'MMMM YYYY': {
+                const month = d.toLocaleString('default', { month: 'long' });
+                return `${month.charAt(0).toUpperCase()}${month.substring(1)} ${d.getFullYear()}`;
+            }
+            case 'MMM': {
+                const month = d.toLocaleString('default', { month: 'short' });
+                return `${month.charAt(0).toUpperCase()}${month.substring(1)}`;
+            }
+            case 'MMM - YYYY': {
+                const month = d.toLocaleString('default', { month: 'short' });
+                return `${month.charAt(0).toUpperCase()}${month.substring(1)} - ${d.getFullYear()}`;
+            }
+            case 'MMM YYYY': {
+                const month = d.toLocaleString('default', { month: 'short' });
+                return `${month.charAt(0).toUpperCase()}${month.substring(1)} ${d.getFullYear()}`;
+            }
+            case 'W':
+                return `${getWeekNumber(d)}`;
+            case 'WW': {
+                const weeknumber = getWeekNumber(d);
+                return `${weeknumber.toString().length == 1 ? '0' : ''}${weeknumber}`;
+            }
+            default:
+                console.warn(`Date Format '${format}' is not supported, use another date adapter.`);
+                return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+        }
     }
     /**
      * Rounds the date down to the nearest unit
      *
      * Note: This does not consider the timezone, rounds only to the UTC time, which makes it incorrect to round to day start or half hour time zones
      */
-	roundTo(date, unit, offset) {
-		try {
-			
-			const magnetDuration = getPeriodDuration(unit, offset);
-			const value = Math.round(date / magnetDuration) * magnetDuration; //
-			return value;
-		} catch (error) {
-			console.log(error,'err');
-			
-		}
+    roundTo(date, unit, offset) {
+        const magnetDuration = getPeriodDuration(unit, offset);
+        const value = Math.round(date / magnetDuration) * magnetDuration; //
+        return value;
     }
 }
 function pad(value) {
-	try {
-		
-		let result = value.toString();
-		for (let i = result.length; i < 2; i++) {
-			result = '0' + result;
-		}
-		return result;
-	} catch (error) {
-		console.log(error,'err');
-		
-	}
+    let result = value.toString();
+    for (let i = result.length; i < 2; i++) {
+        result = '0' + result;
+    }
+    return result;
 }
 function getWeekNumber(d) {
     // Copy date so don't modify original
@@ -4649,42 +4607,37 @@ function getPeriodDuration(unit, offset) {
  * TODO:: tests, optimization: update only rows that have changes, update only overlapping tasks
  */
 function layout(tasks, params) {
-	try {
-		if (!tasks.length) {
-			return;
-		}
-		if (tasks.length === 1) {
-			const task = tasks[0];
-			task.yPos = 0;
-			task.intersectsWith = [];
-			task.height = params.rowContentHeight;
-			task.topDelta = (task.yPos * task.height); // + rowPadding which is added by taskfactory;
-		}
-		tasks.sort(_byStartThenByLongestSortFn);
-		for (const left of tasks) {
-			left.yPos = 0; // reset y positions
-			left.intersectsWith = [];
-			for (const right of tasks) {
-				if (left !== right && _intersects(left, right)) {
-					left.intersectsWith.push(right);
-				}
-			}
-		}
-		for (const task of tasks) {
-			task.numYSlots = _getMaxIntersectsWithLength(task);
-			for (let i = 0; i < task.numYSlots; i++) {
-				if (!task.intersectsWith.some(intersect => intersect.yPos === i)) {
-					task.yPos = i;
-					task.height = (params.rowContentHeight / task.numYSlots);
-					task.topDelta = (task.yPos * task.height); // + rowPadding which is added by taskfactory;
-					break;
-				}
-			}
-		}
-	} catch (error) {
-		console.log(error,'err');
-	}
-   
+    if (!tasks.length) {
+        return;
+    }
+    if (tasks.length === 1) {
+        const task = tasks[0];
+        task.yPos = 0;
+        task.intersectsWith = [];
+        task.height = params.rowContentHeight;
+        task.topDelta = (task.yPos * task.height); // + rowPadding which is added by taskfactory;
+    }
+    tasks.sort(_byStartThenByLongestSortFn);
+    for (const left of tasks) {
+        left.yPos = 0; // reset y positions
+        left.intersectsWith = [];
+        for (const right of tasks) {
+            if (left !== right && _intersects(left, right)) {
+                left.intersectsWith.push(right);
+            }
+        }
+    }
+    for (const task of tasks) {
+        task.numYSlots = _getMaxIntersectsWithLength(task);
+        for (let i = 0; i < task.numYSlots; i++) {
+            if (!task.intersectsWith.some(intersect => intersect.yPos === i)) {
+                task.yPos = i;
+                task.height = (params.rowContentHeight / task.numYSlots);
+                task.topDelta = (task.yPos * task.height); // + rowPadding which is added by taskfactory;
+                break;
+            }
+        }
+    }
 }
 /** string intersection between tasks */
 function _intersects(left, right) {
@@ -5425,7 +5378,7 @@ function create_fragment$5(ctx) {
 			}
 
 			/*div2_binding*/ ctx[113](div2);
-			div2_resize_listener = add_resize_listener(div2, /*div2_elementresize_handler*/ ctx[114].bind(div2));
+			div2_resize_listener = add_iframe_resize_listener(div2, /*div2_elementresize_handler*/ ctx[114].bind(div2));
 			append(div8, t2);
 			append(div8, div7);
 			append(div7, div6);
@@ -5467,7 +5420,7 @@ function create_fragment$5(ctx) {
 			}
 
 			/*div7_binding*/ ctx[116](div7);
-			div7_resize_listener = add_resize_listener(div7, /*div7_elementresize_handler*/ ctx[117].bind(div7));
+			div7_resize_listener = add_iframe_resize_listener(div7, /*div7_elementresize_handler*/ ctx[117].bind(div7));
 			/*div9_binding*/ ctx[118](div9);
 			current = true;
 
@@ -5477,10 +5430,11 @@ function create_fragment$5(ctx) {
 					action_destroyer(/*scrollable*/ ctx[47].call(null, div7)),
 					listen(div7, "wheel", /*onwheel*/ ctx[50]),
 					listen(div9, "mousedown", stop_propagation(/*onEvent*/ ctx[46])),
-					listen(div9, "click",  ctx[46]),
+					listen(div9, "click", /*onEvent*/ ctx[46]),
 					listen(div9, "dblclick", /*onEvent*/ ctx[46]),
 					listen(div9, "mouseover", /*onEvent*/ ctx[46]),
-					listen(div9, "mouseleave", /*onEvent*/ ctx[46]),
+					// listen(div9, "mouseleave", /*onEvent*/ ctx[46]),
+					listen(div9, "mouseup", /*onEvent*/ ctx[46]),
 					listen(div9, "contextmenu", /*onEvent*/ ctx[46])
 				];
 
@@ -5979,8 +5933,9 @@ function instance$5($$self, $$props, $$invalidate) {
 		api.registerEvent('tasks', 'moveEnd');
 		api.registerEvent('tasks', 'change');
 		api.registerEvent('tasks', 'changed');
-		api.registerEvent("tasks", "contextmenu");
+		api.registerEvent('tasks', 'contextmenu');
 		api.registerEvent('tasks', 'dblclicked');
+		api.registerEvent("rows", "dblclicked");
 		api.registerEvent('gantt', 'viewChanged');
 		api.registerEvent('gantt', 'dateSelected');
 		api.registerEvent('timeranges', 'clicked');
@@ -5990,31 +5945,53 @@ function instance$5($$self, $$props, $$invalidate) {
 
 	const { onDelegatedEvent, offDelegatedEvent, onEvent } = createDelegatedEventDispatcher();
 
-	onDelegatedEvent('click', 'data-task-id', (event, data, target) => {
-		try {
-		  const taskId = data;
-		  const task = $taskStore.entities[taskId];
+	onDelegatedEvent('mousedown', 'data-task-id', (event, data, target) => {
+		const taskId = data;
+		isMove = false
 		
-		  if (isLeftClick(event) && !target.classList.contains('sg-task-reflected')) {
-			if (event.ctrlKey) {
-				selectionManager.toggleSelection(taskId, target);
-			} else {
-				selectionManager.selectSingle(taskId, target);
-			}
-			
-			selectionManager.dispatchSelectionEvent(taskId, event);
-			}
-			const object = {
-				taskId: data,
-				task: task,
-				event: event
-			}
-		  api['tasks'].raise.select(object);
-		} catch (error) {
-			console.error(error)
+		if (isLeftClick(event) && !target.classList.contains('sg-task-reflected')) {
+		if (event.ctrlKey) {
+			selectionManager.toggleSelection(taskId, target);
+		} else {
+			selectionManager.selectSingle(taskId, target);
+		}
+		
+		selectionManager.dispatchSelectionEvent(taskId, event);
 		}
 	});
 
+	// [custom] mouse up to handle show popup
+	onDelegatedEvent('mouseup', 'data-task-id', (event, data, target) => {
+		const task = $taskStore.entities[data];
+		if ((isRightClick(event) || task.reflected) && !isMove) {
+			isMove = true;
+		}
+
+		const object = {
+			taskId: data,
+			task: task,
+			event: event,
+			isMoveTask: isMove
+		}
+
+		var date = columnService.getDateByPosition(event.layerX);
+		const objectDBCLick = {
+			taskId: data,
+			task: task,
+			event: event,
+			date: date
+		}
+
+		if (task.reflected) {
+			api['tasks'].raise.dblclicked(objectDBCLick);
+		} else {
+			console.log(object,'object');
+			api['tasks'].raise.select(object);
+		}
+		setCursor('default');
+	});
+
+	//[custom] context menu
 	onDelegatedEvent("contextmenu", "data-task-id", (event, data, target) => {
 		const taskId = data;
 		const task = $taskStore.entities[taskId];
@@ -6039,53 +6016,36 @@ function instance$5($$self, $$props, $$invalidate) {
 		set_store_value(hoveredRow, $hoveredRow = data, $hoveredRow);
 	});
 
-	onDelegatedEvent('click', 'data-row-id', (event, data, target) => {
+	onDelegatedEvent('dblclick', 'data-row-id', (event, data, target) => {
+		console.log(object,'aaaa');
 		selectionManager.unSelectTasks();
-
-		if ($selectedRow == data) {
-			set_store_value(selectedRow, $selectedRow = null, $selectedRow);
-			return;
-		}
-
-		set_store_value(selectedRow, $selectedRow = data, $selectedRow);
-	});
-
-	onDelegatedEvent("dblclick", "data-row-id", (event, data, target) => {
 		var targetClasses = target.getAttribute('class');
 		if (targetClasses.indexOf('sg-table-row') > - 1) return;
-
+		
 		var date = columnService.getDateByPosition(event.offsetX);
-
+		
 		const rowId = data;
 		var object = { date: date, rowId: rowId };
-
+		
 		if (event.ctrlKey) {
 			selectionManager.toggleSelection(rowId);
 		} else {
 			selectionManager.selectSingle(rowId);
 		}
-
+		
+		if ($selectedRow == data) {
+			set_store_value(selectedRow, $selectedRow = null, $selectedRow);
+			return;
+		}
 		api.rows.raise.dblclicked(object);
-
-		set_store_value(selectedRow, $selectedRow = +data);
+		set_store_value(selectedRow, $selectedRow = +data, $selectedRow);
 	});
 
 	onDelegatedEvent('dblclick', 'data-task-id', (event, data, target) => {
 		const taskId = data;
-		const task = $taskStore.entities[taskId];
-		if (event.ctrlKey) {
-			selectionManager.toggleSelection(taskId);
-		} else {
-			selectionManager.selectSingle(taskId);
-		}
-		var date = columnService.getDateByPosition(event.layerX);
-		const object = {
-			taskId: data,
-			task: task,
-			event: event,
-			date: date
-		}
-		api['tasks'].raise.dblclicked(object);
+		console.log(isDoubleClick(event),'dblick2');
+	    console.log(event.detail,'detail click2');
+		api['tasks'].raise.dblclicked($taskStore.entities[taskId], event);
 	});
 
 	onDelegatedEvent('mouseleave', 'empty', (event, data, target) => {
@@ -6096,8 +6056,9 @@ function instance$5($$self, $$props, $$invalidate) {
 		offDelegatedEvent('click', 'data-task-id');
 		offDelegatedEvent('click', 'data-row-id');
 		offDelegatedEvent('mousedown', 'data-task-id');
-		offDelegatedEvent('dblclicked', 'data-task-id');
-		offDelegatedEvent("dblclicked", "data-row-id");
+		offDelegatedEvent('mouseup', 'data-task-id');
+		offDelegatedEvent('dblclick', 'data-task-id');
+		offDelegatedEvent('dblclick', 'data-row-id');
 		selectionManager.unSelectTasks();
 	});
 
@@ -7047,7 +7008,8 @@ function create_fragment$4(ctx) {
 			insert(target, div, anchor);
 			if (if_block) if_block.m(div, null);
 			append(div, t);
-			
+
+			//[custom] add VDR ID on Row header
 			if (ctx[0].childLevel === 0 && ctx[0].model.customRowHeaderHtmlNode) {
 				div.lastElementChild.after(ctx[0].model.customRowHeaderHtmlNode);
 			}
@@ -7062,6 +7024,8 @@ function create_fragment$4(ctx) {
 			if (/*row*/ ctx[0].children) {
 				if (if_block) {
 					if_block.p(ctx, dirty);
+
+					//[custom] add VDR ID on Row header
 					if (div.lastElementChild && ctx[0].model.customRowHeaderHtmlNode) {
 						if (!!div.firstElementChild.nextElementSibling) {
 							div.firstElementChild.nextElementSibling.remove();
@@ -7074,6 +7038,8 @@ function create_fragment$4(ctx) {
 					if_block = create_if_block$2(ctx);
 					if_block.c();
 					if_block.m(div, t);
+
+					//[custom] add VDR ID on Row header
 					if (ctx[0].childLevel === 0 && ctx[0].model.customRowHeaderHtmlNode) {
 						if (!!div.firstElementChild.nextElementSibling) {
 							div.firstElementChild.nextElementSibling.remove();
@@ -7086,9 +7052,6 @@ function create_fragment$4(ctx) {
 			} else if (if_block) {
 				if_block.d(1);
 				if_block = null;
-				if(div.lastElementChild) {
-					div.lastElementChild.remove();
-				}
 			}
 
 			if (default_slot) {
@@ -7131,49 +7094,43 @@ function create_fragment$4(ctx) {
 }
 
 function instance$4($$self, $$props, $$invalidate) {
-	try {
+	let { $$slots: slots = {}, $$scope } = $$props;
+	let { row } = $$props;
+	const dispatch = createEventDispatcher();
+
+	function onExpandToggle() {
+		const data = {
+			model: row.model,
+		}
 		
-		let { $$slots: slots = {}, $$scope } = $$props;
-		let { row } = $$props;
-		const dispatch = createEventDispatcher();
-	
-		function onExpandToggle() {
-			const data = {
-				model: row.model,
-			}
-			
-			if (row.expanded) {
-				dispatch("rowCollapsed", { row });
-				row.expanded = false;
+		if (row.expanded) {
+			dispatch("rowCollapsed", { row });
+			row.expanded = false;
+		} else {
+			dispatch("rowExpanded", { row });
+			row.expanded = true;
+		}
+		if (data.model.classes !== "childRow") {
+			if (StelteGanttScopeHolder.virtualScroll.isScroll > 0) {
+				StelteGanttScopeHolder.onRowSelected$.data = data;
+				StelteGanttScopeHolder.onRowSelected$.prevData = data;
+				StelteGanttScopeHolder.virtualScroll.isScroll--;
 			} else {
-				dispatch("rowExpanded", { row });
-				row.expanded = true;
-			}
-			if (data.model.classes !== "childRow") {
-				if (StelteGanttScopeHolder.virtualScroll.isScroll > 0) {
-					StelteGanttScopeHolder.onRowSelected$.data = data;
-					StelteGanttScopeHolder.onRowSelected$.prevData = data;
-					StelteGanttScopeHolder.virtualScroll.isScroll--;
-				} else {
-					StelteGanttScopeHolder.onRowSelected$.next(data);
-					StelteGanttScopeHolder.virtualScroll.isExpandedClicked ++;
-					if (StelteGanttScopeHolder.virtualScroll.isExpandedClicked > 1) {
-						StelteGanttScopeHolder.virtualScroll.isExpandedClicked = 0;
-					}
+				StelteGanttScopeHolder.onRowSelected$.next(data);
+				StelteGanttScopeHolder.virtualScroll.isExpandedClicked ++;
+				if (StelteGanttScopeHolder.virtualScroll.isExpandedClicked > 1) {
+					StelteGanttScopeHolder.virtualScroll.isExpandedClicked = 0;
 				}
 			}
 		}
-	
-	
-		$$self.$$set = $$props => {
-			if ('row' in $$props) $$invalidate(0, row = $$props.row);
-			if ('$$scope' in $$props) $$invalidate(2, $$scope = $$props.$$scope);
-		};
-	
-		return [row, onExpandToggle, $$scope, slots];
-	} catch (error) {
-		console.log(error,'err');
 	}
+
+	$$self.$$set = $$props => {
+		if ('row' in $$props) $$invalidate(0, row = $$props.row);
+		if ('$$scope' in $$props) $$invalidate(2, $$scope = $$props.$$scope);
+	};
+
+	return [row, onExpandToggle, $$scope, slots];
 }
 
 class TableTreeCell extends SvelteComponent {
@@ -7812,7 +7769,7 @@ function create_fragment$3(ctx) {
 				attr(div, "class", div_class_value);
 			}
 
-			if (dirty & /*row, row*/ 2) {
+			if (!current || dirty & /*row, row*/ 2) {
 				toggle_class(div, "sg-row-expanded", /*row*/ ctx[1].model.expanded);
 			}
 
@@ -8307,13 +8264,11 @@ function instance$2($$self, $$props, $$invalidate) {
 			}
 		});
 
-		// [custom] performance when expand row
-		
-		// $taskStore.ids.forEach(id => {
-		// 	const task = $taskStore.entities[id];
-		// 	const row = $rowStore.entities[task.model.resourceId];
-		// 	set_store_value(taskStore, $taskStore.entities[id].top = row.y + $rowPadding, $taskStore);
-		// });
+		$taskStore.ids.forEach(id => {
+			const task = $taskStore.entities[id];
+			const row = $rowStore.entities[task.model.resourceId];
+			set_store_value(taskStore, $taskStore.entities[id].top = row.y + $rowPadding, $taskStore);
+		});
 	}
 
 	// if gantt displays a bottom scrollbar and table does not, we need to pad out the table
@@ -8854,10 +8809,8 @@ const defaults = {
     }
 };
 class SvelteGanttExternal {
-    // draggable;
-    // element;
-    // options;
-    constructor(node, options) {
+	constructor(node, options) {
+		this.element = undefined;
         this.options = Object.assign({}, defaults, options);
         this.draggable = new Draggable(node, {
             onDrag: this.onDrag.bind(this),
@@ -8900,7 +8853,6 @@ class SvelteGanttExternal {
  * Date adapter that uses MomentJS
  */
 class MomentSvelteGanttDateAdapter {
-    // moment;
     constructor(moment) {
         this.moment = moment;
     }
@@ -8958,7 +8910,6 @@ function roundMoment(m, precision, key, direction = 'round') {
     m.set(key, value);
     return m;
 }
-
 
 function BehaviorSubject(data) {
 	this.prevData = null;
