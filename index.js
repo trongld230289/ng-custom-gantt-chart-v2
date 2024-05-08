@@ -5429,13 +5429,12 @@ function create_fragment$5(ctx) {
 					action_destroyer(/*horizontalScrollListener*/ ctx[48].call(null, div1)),
 					action_destroyer(/*scrollable*/ ctx[47].call(null, div7)),
 					listen(div7, "wheel", /*onwheel*/ ctx[50]),
+					listen(div9, "dblclick", /*onEvent*/ ctx[46]),
+					listen(div9, "contextmenu", /*onEvent*/ ctx[46]),
 					listen(div9, "mousedown", stop_propagation(/*onEvent*/ ctx[46])),
 					listen(div9, "click", /*onEvent*/ ctx[46]),
-					listen(div9, "dblclick", /*onEvent*/ ctx[46]),
 					listen(div9, "mouseover", /*onEvent*/ ctx[46]),
 					// listen(div9, "mouseleave", /*onEvent*/ ctx[46]),
-					listen(div9, "mouseup", /*onEvent*/ ctx[46]),
-					listen(div9, "contextmenu", /*onEvent*/ ctx[46])
 				];
 
 				mounted = true;
@@ -5945,51 +5944,36 @@ function instance$5($$self, $$props, $$invalidate) {
 
 	const { onDelegatedEvent, offDelegatedEvent, onEvent } = createDelegatedEventDispatcher();
 
-	onDelegatedEvent('mousedown', 'data-task-id', (event, data, target) => {
-		const taskId = data;
-		isMove = false
-		
-		if (isLeftClick(event) && !target.classList.contains('sg-task-reflected')) {
-		if (event.ctrlKey) {
-			selectionManager.toggleSelection(taskId, target);
-		} else {
-			selectionManager.selectSingle(taskId, target);
-		}
-		
-		selectionManager.dispatchSelectionEvent(taskId, event);
-		}
-	});
-
+	
 	// [custom] mouse up to handle show popup
-	onDelegatedEvent('mouseup', 'data-task-id', (event, data, target) => {
-		const task = $taskStore.entities[data];
-		if ((isRightClick(event) || task.reflected) && !isMove) {
-			isMove = true;
-		}
+	// onDelegatedEvent('mouseup', 'data-task-id', (event, data, target) => {
+	// 	const task = $taskStore.entities[data];
+	// 	if ((isRightClick(event) || task.reflected) && !isMove) {
+	// 		isMove = true;
+	// 	}
 
-		const object = {
-			taskId: data,
-			task: task,
-			event: event,
-			isMoveTask: isMove
-		}
+	// 	const object = {
+	// 		taskId: data,
+	// 		task: task,
+	// 		event: event,
+	// 		isMoveTask: isMove
+	// 	}
 
-		var date = columnService.getDateByPosition(event.layerX);
-		const objectDBCLick = {
-			taskId: data,
-			task: task,
-			event: event,
-			date: date
-		}
+	// 	var date = columnService.getDateByPosition(event.layerX);
+	// 	const objectDBCLick = {
+	// 		taskId: data,
+	// 		task: task,
+	// 		event: event,
+	// 		date: date
+	// 	}
 
-		if (task.reflected) {
-			api['tasks'].raise.dblclicked(objectDBCLick);
-		} else {
-			console.log(object,'object');
-			api['tasks'].raise.select(object);
-		}
-		setCursor('default');
-	});
+	// 	if (task.reflected) {
+	// 		api['tasks'].raise.dblclicked(objectDBCLick);
+	// 	} else {
+	// 		api['tasks'].raise.select(object);
+	// 	}
+	// 	setCursor('default');
+	// });
 
 	//[custom] context menu
 	onDelegatedEvent("contextmenu", "data-task-id", (event, data, target) => {
@@ -6007,7 +5991,6 @@ function instance$5($$self, $$props, $$invalidate) {
 			task: task,
 			event: event
 		}
-
 		api.tasks.raise.contextmenu(object);
 		event.preventDefault();
 	});
@@ -6017,7 +6000,6 @@ function instance$5($$self, $$props, $$invalidate) {
 	});
 
 	onDelegatedEvent('dblclick', 'data-row-id', (event, data, target) => {
-		console.log(object,'aaaa');
 		selectionManager.unSelectTasks();
 		var targetClasses = target.getAttribute('class');
 		if (targetClasses.indexOf('sg-table-row') > - 1) return;
@@ -6043,9 +6025,47 @@ function instance$5($$self, $$props, $$invalidate) {
 
 	onDelegatedEvent('dblclick', 'data-task-id', (event, data, target) => {
 		const taskId = data;
-		console.log(isDoubleClick(event),'dblick2');
-	    console.log(event.detail,'detail click2');
-		api['tasks'].raise.dblclicked($taskStore.entities[taskId], event);
+		const task = $taskStore.entities[taskId];
+
+		if (event.ctrlKey) {
+			selectionManager.toggleSelection(taskId);
+		} else {
+			selectionManager.selectSingle(taskId);
+		}
+
+		var date = columnService.getDateByPosition(event.layerX);
+
+		const object = {
+			taskId: data,
+			task: task,
+			event: event,
+			date: date
+		}
+		
+		api['tasks'].raise.dblclicked(object);
+	});
+
+	onDelegatedEvent('mousedown', 'data-task-id', (event, data, target) => {
+		const taskId = data;
+		const task = $taskStore.entities[data];
+		isMove = false
+		const object = {
+			taskId: data,
+			task: task,
+			event: event,
+			isMoveTask: isMove
+		}
+
+		if (isLeftClick(event) && !target.classList.contains('sg-task-reflected')) {
+		if (event.ctrlKey) {
+			selectionManager.toggleSelection(taskId, target);
+		} else {
+			selectionManager.selectSingle(taskId, target);
+		}
+		
+		selectionManager.dispatchSelectionEvent(taskId, event);
+		}
+		api['tasks'].raise.select(object);
 	});
 
 	onDelegatedEvent('mouseleave', 'empty', (event, data, target) => {
@@ -6056,7 +6076,6 @@ function instance$5($$self, $$props, $$invalidate) {
 		offDelegatedEvent('click', 'data-task-id');
 		offDelegatedEvent('click', 'data-row-id');
 		offDelegatedEvent('mousedown', 'data-task-id');
-		offDelegatedEvent('mouseup', 'data-task-id');
 		offDelegatedEvent('dblclick', 'data-task-id');
 		offDelegatedEvent('dblclick', 'data-row-id');
 		selectionManager.unSelectTasks();
