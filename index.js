@@ -3164,11 +3164,13 @@ function addDays(date, offset = 1) {
 }
 function addWeeks(date, offset = 1) {
     const d = date;
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day == 0 ? -6 : 1); // adjust when day is sunday
+	const day = d.getDay();
+	const newDate = d.getDate();
+	//[custom] week mode
+	const diff = newDate == 1 ? newDate : newDate - day; // adjust when day is sunday
     d.setDate(diff);
     d.setHours(0, 0, 0);
-    d.setDate(d.getDate() + 7 * offset);
+	d.setDate(d.getDate() + 7 * offset);
     return d;
 }
 function addMonths(date, offset = 1) {
@@ -3221,7 +3223,7 @@ function getAllPeriods(from, to, unit, offset = 1, highlightedDurations) {
     if (units.indexOf(unit) !== -1) {
         let tmsWorkOld = 0;
         let interval_duration = 0;
-        const start = new Date(from); // Starts at hh:mm:ss
+		const start = new Date(from); // Starts at hh:mm:ss
         const dateWork = new Date(from);
         let nextDate = getNextDate(dateWork, unit, offset);
         let tmsWork = nextDate.getTime();
@@ -3393,7 +3395,7 @@ function create_each_block$6(ctx) {
 	let dispose;
 
 	function click_handler() {
-		return /*click_handler*/ ctx[10](/*_header*/ ctx[13]);
+		// return /*click_handler*/ ctx[10](/*_header*/ ctx[13]);
 	}
 
 	return {
@@ -4529,6 +4531,13 @@ class DefaultSvelteGanttDateAdapter {
             case 'WW': {
                 const weeknumber = getWeekNumber(d);
                 return `${weeknumber.toString().length == 1 ? '0' : ''}${weeknumber}`;
+			}
+			// [Custom] add more format date
+			case 'MM.YYYY': {
+				return moment(getNextDate(d, 'week', 0)).format('ddd DD');
+			}
+			case 'ddd DD': {
+                return `${moment(date).format(format)}`;
             }
             default:
                 console.warn(`Date Format '${format}' is not supported, use another date adapter.`);
@@ -5431,8 +5440,8 @@ function create_fragment$5(ctx) {
 					listen(div7, "wheel", /*onwheel*/ ctx[50]),
 					listen(div9, "dblclick", /*onEvent*/ ctx[46]),
 					listen(div9, "contextmenu", /*onEvent*/ ctx[46]),
-					listen(div9, "mousedown", stop_propagation(/*onEvent*/ ctx[46])),
 					listen(div9, "click", /*onEvent*/ ctx[46]),
+					listen(div9, "mousedown", stop_propagation(/*onEvent*/ ctx[46])),
 					listen(div9, "mouseover", /*onEvent*/ ctx[46]),
 					// listen(div9, "mouseleave", /*onEvent*/ ctx[46]),
 				];
@@ -5926,13 +5935,13 @@ function instance$5($$self, $$props, $$invalidate) {
 			mainHeaderContainer
 		});
 
+		api.registerEvent('tasks', 'contextmenu');
 		api.registerEvent('tasks', 'move');
 		api.registerEvent('tasks', 'select');
 		api.registerEvent('tasks', 'switchRow');
 		api.registerEvent('tasks', 'moveEnd');
 		api.registerEvent('tasks', 'change');
 		api.registerEvent('tasks', 'changed');
-		api.registerEvent('tasks', 'contextmenu');
 		api.registerEvent('tasks', 'dblclicked');
 		api.registerEvent("rows", "dblclicked");
 		api.registerEvent('gantt', 'viewChanged');
@@ -5943,37 +5952,6 @@ function instance$5($$self, $$props, $$invalidate) {
 	});
 
 	const { onDelegatedEvent, offDelegatedEvent, onEvent } = createDelegatedEventDispatcher();
-
-	
-	// [custom] mouse up to handle show popup
-	// onDelegatedEvent('mouseup', 'data-task-id', (event, data, target) => {
-	// 	const task = $taskStore.entities[data];
-	// 	if ((isRightClick(event) || task.reflected) && !isMove) {
-	// 		isMove = true;
-	// 	}
-
-	// 	const object = {
-	// 		taskId: data,
-	// 		task: task,
-	// 		event: event,
-	// 		isMoveTask: isMove
-	// 	}
-
-	// 	var date = columnService.getDateByPosition(event.layerX);
-	// 	const objectDBCLick = {
-	// 		taskId: data,
-	// 		task: task,
-	// 		event: event,
-	// 		date: date
-	// 	}
-
-	// 	if (task.reflected) {
-	// 		api['tasks'].raise.dblclicked(objectDBCLick);
-	// 	} else {
-	// 		api['tasks'].raise.select(object);
-	// 	}
-	// 	setCursor('default');
-	// });
 
 	//[custom] context menu
 	onDelegatedEvent("contextmenu", "data-task-id", (event, data, target) => {
@@ -5992,6 +5970,7 @@ function instance$5($$self, $$props, $$invalidate) {
 			event: event
 		}
 		api.tasks.raise.contextmenu(object);
+		setCursor('default');
 		event.preventDefault();
 	});
 
@@ -6048,7 +6027,7 @@ function instance$5($$self, $$props, $$invalidate) {
 	onDelegatedEvent('mousedown', 'data-task-id', (event, data, target) => {
 		const taskId = data;
 		const task = $taskStore.entities[data];
-		isMove = false
+		isMove = isRightClick(event);
 		const object = {
 			taskId: data,
 			task: task,
