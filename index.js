@@ -4241,6 +4241,7 @@ class RowFactory {
             model: row,
             y,
 			height,
+			expanded: row.expanded ?  row.expanded : false
         };
     }
     createRows(rows) {
@@ -6906,11 +6907,6 @@ class Gantt extends SvelteComponent {
 
 	get customApi() {
 		return {
-			setConfig: (config) => {
-				const defaultConfig = {...StelteGanttScopeHolder.customGanttConfig};
-				StelteGanttScopeHolder.customGanttConfig = {...defaultConfig, ...config};
-			},
-			onRowSelected$: StelteGanttScopeHolder.onRowSelected$,
 			selectedRowEmitter$: StelteGanttScopeHolder.selectedRowEmitter$
 		};
 	}
@@ -7124,10 +7120,9 @@ function instance$4($$self, $$props, $$invalidate) {
 	const dispatch = createEventDispatcher();
 
 	function onExpandToggle() {
-		const data = {
-			model: row.model,
-		}
-		
+		// const data = {
+		// 	model: row.model,
+		// }
 		if (row.expanded) {
 			dispatch("rowCollapsed", { row });
 			row.expanded = false;
@@ -7135,19 +7130,22 @@ function instance$4($$self, $$props, $$invalidate) {
 			dispatch("rowExpanded", { row });
 			row.expanded = true;
 		}
-		if (data.model.classes !== "childRow") {
-			if (StelteGanttScopeHolder.virtualScroll.isScroll > 0) {
-				StelteGanttScopeHolder.onRowSelected$.data = data;
-				StelteGanttScopeHolder.onRowSelected$.prevData = data;
-				StelteGanttScopeHolder.virtualScroll.isScroll--;
-			} else {
-				StelteGanttScopeHolder.onRowSelected$.next(data);
-				StelteGanttScopeHolder.virtualScroll.isExpandedClicked ++;
-				if (StelteGanttScopeHolder.virtualScroll.isExpandedClicked > 1) {
-					StelteGanttScopeHolder.virtualScroll.isExpandedClicked = 0;
-				}
-			}
-		}
+
+		// [custom] keep records was expanded 
+		StelteGanttScopeHolder.selectedRowEmitter$.next({id: row.model.id, ganttName: $$self.$$.root.getAttribute('id')});
+		// if (data.model.classes !== "childRow") {
+		// 	if (StelteGanttScopeHolder.virtualScroll.isScroll > 0) {
+		// 		StelteGanttScopeHolder.onRowSelected$.data = data;
+		// 		StelteGanttScopeHolder.onRowSelected$.prevData = data;
+		// 		StelteGanttScopeHolder.virtualScroll.isScroll--;
+		// 	} else {
+		// 		StelteGanttScopeHolder.onRowSelected$.next(data);
+		// 		StelteGanttScopeHolder.virtualScroll.isExpandedClicked ++;
+		// 		if (StelteGanttScopeHolder.virtualScroll.isExpandedClicked > 1) {
+		// 			StelteGanttScopeHolder.virtualScroll.isExpandedClicked = 0;
+		// 		}
+		// 	}
+		// }
 	}
 
 	$$self.$$set = $$props => {
@@ -7726,7 +7724,6 @@ function create_fragment$3(ctx) {
 			for (let i = 0; i < each_blocks.length; i += 1) {
 				each_blocks[i].c();
 			}
-
 			attr(div, "data-row-id", div_data_row_id_value = /*row*/ ctx[1].model.id);
 			set_style(div, "height", /*$rowHeight*/ ctx[2] + "px");
 			attr(div, "class", div_class_value = "sg-table-row " + (/*row*/ ctx[1].model.classes || '') + " svelte-oze9vk");
@@ -7743,14 +7740,14 @@ function create_fragment$3(ctx) {
 				}
 			}
 
-			const currentDataRow = StelteGanttScopeHolder.onRowSelected$.value();
-			if (currentDataRow) {
-				if (ctx[1].model.id === currentDataRow.model.id) {
-					set_style(div, "background-color", StelteGanttScopeHolder.customGanttConfig.selectedRowHeaderColor);
-				} else {
-					set_style(div, "background-color", "transparent");
-				}
-			}
+			// const currentDataRow = StelteGanttScopeHolder.onRowSelected$.value();
+			// if (currentDataRow) {
+			// 	if (ctx[1].model.id === currentDataRow.model.id) {
+			// 		set_style(div, "background-color", StelteGanttScopeHolder.customGanttConfig.selectedRowHeaderColor);
+			// 	} else {
+			// 		set_style(div, "background-color", "transparent");
+			// 	}
+			// }
 
 			current = true;
 		},
@@ -7806,14 +7803,14 @@ function create_fragment$3(ctx) {
 				toggle_class(div, "sg-selected", /*$selectedRow*/ ctx[4] == /*row*/ ctx[1].model.id);
 			}
 
-			const currentDataRow = StelteGanttScopeHolder.onRowSelected$.value();
-			if (currentDataRow) {
-				if (ctx[1].model.id === currentDataRow.model.id) {
-					set_style(div, "background-color", StelteGanttScopeHolder.customGanttConfig.selectedRowHeaderColor);
-				} else {
-					set_style(div, "background-color", "transparent");
-				}
-			}
+			// const currentDataRow = StelteGanttScopeHolder.onRowSelected$.value();
+			// if (currentDataRow) {
+			// 	if (ctx[1].model.id === currentDataRow.model.id) {
+			// 		set_style(div, "background-color", StelteGanttScopeHolder.customGanttConfig.selectedRowHeaderColor);
+			// 	} else {
+			// 		set_style(div, "background-color", "transparent");
+			// 	}
+			// }
 		},
 		i(local) {
 			if (current) return;
@@ -8967,67 +8964,42 @@ function BehaviorSubject(data) {
 };
 
 var StelteGanttScopeHolder = {
-	displayedTasks: [],
-	displayedTaskRows: [],
-	taskRows: [],
-	taskRowsEntities: {},
-	tableElement: {},
-	onRowSelected$: new BehaviorSubject(null),
-	customGanttConfig: {
-		selectedRowHeaderColor: 'transparent',
-		virtualScroll: { rowHeight: /* default */ 36 },
-		horizonDragger: { max: 700, min: 150 }
-	},
-	virtualScroll: {
-		scrollBlock: null,
-		scrollToTaskRowId: function(taskRowId) {
-			const height = StelteGanttScopeHolder.customGanttConfig.virtualScroll.rowHeight;
-			const indexOfRow = StelteGanttScopeHolder.taskRows.findIndex(id => id === taskRowId);
-			const index = indexOfRow;
-			if (this.scrollBlock) {
-				this.scrollBlock.scrollTop = height * index;
-			}
-		},
-		isScroll: 0,
-		isExpandedClicked: 0
-	},
 	selectedRowEmitter$: new BehaviorSubject(null),
-		
 };
-let preventSettimeout = false;
-StelteGanttScopeHolder.selectedRowEmitter$.subscribe(data => {
-	if (StelteGanttScopeHolder.virtualScroll.isExpandedClicked > 0) {
-		StelteGanttScopeHolder.virtualScroll.isExpandedClicked--;
-		return;
-	}
+// let preventSettimeout = false;
+// StelteGanttScopeHolder.selectedRowEmitter$.subscribe(data => {
+// 	if (StelteGanttScopeHolder.virtualScroll.isExpandedClicked > 0) {
+// 		StelteGanttScopeHolder.virtualScroll.isExpandedClicked--;
+// 		return;
+// 	}
 
-	if (data.current) {
+// 	if (data.current) {
 
-		const selectedRowId = StelteGanttScopeHolder.taskRows.find(id => id === data.current.id);
-		if (selectedRowId) {
-			StelteGanttScopeHolder.virtualScroll.isScroll++;
-			if (StelteGanttScopeHolder.virtualScroll.isScroll > 1) {
-				StelteGanttScopeHolder.virtualScroll.isScroll = 0;
-			}
+// 		const selectedRowId = StelteGanttScopeHolder.taskRows.find(id => id === data.current.id);
+// 		if (selectedRowId) {
+// 			StelteGanttScopeHolder.virtualScroll.isScroll++;
+// 			if (StelteGanttScopeHolder.virtualScroll.isScroll > 1) {
+// 				StelteGanttScopeHolder.virtualScroll.isScroll = 0;
+// 			}
 
-			const expand = async (div) => {
-				if (div) {
-					await div.firstChild.click();
-					await document.getElementById('gantt-custom-sg-rows-svelte-12fxs8g').firstElementChild.firstElementChild.click();
-				}
-			}
-			StelteGanttScopeHolder.virtualScroll.scrollToTaskRowId(data.current.id);
+// 			const expand = async (div) => {
+// 				if (div) {
+// 					await div.firstChild.click();
+// 					await document.getElementById('gantt-custom-sg-rows-svelte-12fxs8g').firstElementChild.firstElementChild.click();
+// 				}
+// 			}
+// 			StelteGanttScopeHolder.virtualScroll.scrollToTaskRowId(data.current.id);
 
-			if (!preventSettimeout) {
-				preventSettimeout = true;
-				setTimeout(() => {
-					expand(document.querySelector(`[data-row-id="${data.current.id}"]`));
-					preventSettimeout = false;
-				}, 200);
-			}
-		}
-	}
-})
+// 			if (!preventSettimeout) {
+// 				preventSettimeout = true;
+// 				setTimeout(() => {
+// 					expand(document.querySelector(`[data-row-id="${data.current.id}"]`));
+// 					preventSettimeout = false;
+// 				}, 200);
+// 			}
+// 		}
+// 	}
+// })
 
 const SvelteGantt = Gantt;
 
