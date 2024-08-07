@@ -3,6 +3,10 @@ var allowLog = false;
 function ganttlogtaskchangedevent(...arg) {
 	allowLog && console.log('__gantt__', ...arg);
 }
+
+function ganttlogtaskselectevent(...arg) {
+	console.log('__gantt__', ...arg);
+}
 function noop() {}
 
 /**
@@ -2230,9 +2234,6 @@ function instance$d($$self, $$props, $$invalidate) {
 	function drag(_) {
 		try {
 		function onDrop(event) {
-			ganttlogtaskchangedevent();
-			ganttlogtaskchangedevent('gantt_drag_check', '_____________________________________________________');
-			ganttlogtaskchangedevent('gantt_drag_check', event);
 			try {
 			let rowChangeValid = true;
 
@@ -2270,9 +2271,7 @@ function instance$d($$self, $$props, $$invalidate) {
 				const from = event.x >= 0 ? columnService.getColumnByDate(testFrom).from : testFrom;
 				const toColumn = columnService.getColumnByDate(testTo);
 				const to = (toColumn.left + toColumn.width - 30 - event.x - event.width) >= 0 ? toColumn.from : testTo; 
-				ganttlogtaskchangedevent('gantt_drag_check', 'onDrop',
-					{testTo, to, event, column: columnService.getColumnByDate(testTo)},
-					(toColumn.left + toColumn.width - 30 - event.x - event.width));
+				ganttlogtaskchangedevent('gantt_drag_check', 'onDrop', 'done');
 
 				const newFrom = $$invalidate(0, model.from = from, model);
 				const newTo = $$invalidate(0, model.to = to, model);
@@ -2353,9 +2352,8 @@ function instance$d($$self, $$props, $$invalidate) {
 			selectionManager.taskSettings.set(model.id.toString(), {
 				onDown: event => {
 					try {
-					ganttlogtaskchangedevent('gantt_drag_check', 'onDrow');
-					mainContainerRect = mainContainer.getBoundingClientRect();
-
+					// do not need to scroll when dragging
+					// mainContainerRect = mainContainer.getBoundingClientRect();
 					if (event.dragging) {
 						setCursor('move');
 					}
@@ -2363,8 +2361,8 @@ function instance$d($$self, $$props, $$invalidate) {
 					if (event.resizing) {
 						setCursor('e-resize');
 					}
-					
-					set_store_value(draggingTaskCache, $draggingTaskCache[model.id] = true, $draggingTaskCache);
+					// custom - do not need to store dragging value
+					// set_store_value(draggingTaskCache, $draggingTaskCache[model.id] = true, $draggingTaskCache);
 					} catch (e) { console.log('gantt_chart_error', e); }
 				},
 				onMouseUp: () => {
@@ -2376,7 +2374,7 @@ function instance$d($$self, $$props, $$invalidate) {
 				},
 				onResize: event => {
 					try {
-					ganttlogtaskchangedevent('gantt_drag_check', 'onResize');
+					// ganttlogtaskchangedevent('gantt_drag_check', 'onResize');
 					$$invalidate(5, _position.x = event.x, _position);
 					$$invalidate(5, _position.width = event.width, _position);
 					$$invalidate(4, _resizing = true);
@@ -2385,7 +2383,7 @@ function instance$d($$self, $$props, $$invalidate) {
 				},
 				onDrag: event => {
 					try {
-					ganttlogtaskchangedevent('gantt_drag_check', 'onDrag');
+					// ganttlogtaskchangedevent('gantt_drag_check', 'onDrag');
 					$$invalidate(5, _position.x = event.x, _position);
 					$$invalidate(5, _position.y = event.y, _position);
 					$$invalidate(3, _dragging = true);
@@ -2395,13 +2393,13 @@ function instance$d($$self, $$props, $$invalidate) {
 				},
 				dragAllowed: () => {
 					try {
-					ganttlogtaskchangedevent('gantt_drag_check', 'dragAllowed');
+					//	ganttlogtaskchangedevent('gantt_drag_check', 'dragAllowed');
 					return $rowStore.entities[model.resourceId].model.enableDragging && model.enableDragging;
 					} catch (e) { console.log('gantt_chart_error', e); }
 				},
 				resizeAllowed: () => {
 					try {
-					ganttlogtaskchangedevent('gantt_drag_check', 'resizeAllowed');
+					// ganttlogtaskchangedevent('gantt_drag_check', 'resizeAllowed');
 					return model.type !== 'milestone' && $rowStore.entities[model.resourceId].model.enableDragging && model.enableDragging;
 					} catch (e) { console.log('gantt_chart_error', e); }
 				},
@@ -2867,15 +2865,16 @@ class Draggable {
 				clientX: this.offsetPos.x + event.clientX,
 				clientY: this.offsetPos.y + event.clientY
 			};
-			if (!this.resizeTriggered) {
-				if (Math.abs(offsetEvent.clientX - this.initialX) > MIN_DRAG_X ||
-					Math.abs(offsetEvent.clientY - this.initialY) > MIN_DRAG_Y) {
-					this.resizeTriggered = true;
-				}
-				else {
-					return;
-				}
-			}
+			this.resizeTriggered = true;
+			// if (!this.resizeTriggered) { // bug resize trigger
+			// 	if (Math.abs(offsetEvent.clientX - this.initialX) > MIN_DRAG_X ||
+			// 		Math.abs(offsetEvent.clientY - this.initialY) > MIN_DRAG_Y) {
+			// 		this.resizeTriggered = true;
+			// 	}
+			// 	else {
+			// 		return;
+			// 	}
+			// }
 			event.preventDefault();
 			if (this.resizing) {
 				const mousePos = getRelativePos(this.settings.container, offsetEvent);
@@ -2947,6 +2946,7 @@ class Draggable {
 			}
 		};
 		this.onmouseup = (event) => {
+			try {
 			const offsetEvent = {
 				clientX: this.offsetPos.x + event.clientX,
 				clientY: this.offsetPos.y + event.clientY
@@ -2979,6 +2979,7 @@ class Draggable {
 			this.overRezisedOffset = undefined;
 			if (!this.settings.modelId)
 				window.removeEventListener('mousemove', this.onmousemove, false);
+			} catch (e) { console.log('gantt_chart_error', e); }
 		};
 		 // if (this.settings.modelId) {
             this.offsetPos = offsetData.offsetPos;
@@ -4343,11 +4344,14 @@ class GanttApi {
         let eventId = 'on:' + featureName + ':' + eventName;
         feature.raise[eventName] = (...params) => {
             //todo add svelte? event listeners, looping isnt effective unless rarely used
-            this.listeners.forEach(listener => {
-                if (listener.eventId === eventId) {
-                    listener.handler(params);
-                }
-            });
+			try {
+
+				this.listeners.forEach(listener => {
+					if (listener.eventId === eventId) {
+						listener.handler(params);
+					}
+				});
+			} catch (e) { console.log('gantt_chart_error', e); }         
         };
         // Creating on event method featureName.oneventName
         feature.on[eventName] = handler => {
@@ -4482,7 +4486,7 @@ class SelectionManager {
 		};
 		this.selectionDropped = event => {
 			try {
-		// console.log('__gantt__', 'mousedown', event);
+			//console.log('__gantt__', 'mousedown', event);
 			window.removeEventListener('mousemove', this.selectionDragOrResizing, false);
 			for (const [, selectedItem] of this.currentSelection.entries()) {
 				const { draggable } = selectedItem;
