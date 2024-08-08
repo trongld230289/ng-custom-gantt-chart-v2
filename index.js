@@ -2257,6 +2257,7 @@ function instance$d($$self, $$props, $$invalidate) {
 					rowChangeValid = false;
 				}
 			}
+			const isUserTourched = _resizing || _dragging;
 
 			$$invalidate(3, _dragging = $$invalidate(4, _resizing = false));
 			const task = $taskStore.entities[model.id];
@@ -2284,25 +2285,25 @@ function instance$d($$self, $$props, $$invalidate) {
 				updatePosition(left, top + topDelta, width);
 				const newTask = { ...task, left, width, top, model };
 				const changed = prevFrom != newFrom || prevTo != newTo || sourceRow && sourceRow.model.id !== targetRow.model.id;
-				// if (changed) {
+				if (isUserTourched) {
 					api.tasks.raise.change({
 						task: newTask,
 						sourceRow,
 						targetRow,
 						previousState,
 					});
-				// }
+				}
 
 				selectionManager.newTasksAndReflections.push(newTask);
 
-				// if (changed) {
+				if (isUserTourched) {
 					api.tasks.raise.changed({
 						task: newTask,
 						sourceRow,
 						targetRow,
 						previousState,
 					});
-				// }
+				}
 
 				// update shadow tasks
 				if (newTask.reflections) {
@@ -2369,6 +2370,7 @@ function instance$d($$self, $$props, $$invalidate) {
 					try {
 					ganttlogtaskchangedevent('gantt_drag_check', 'onMouseUp');
 					setCursor('default');
+					($$invalidate(5, _position.x = task.left, _position), $$invalidate(5, _position.width = task.width, _position), $$invalidate(5, _position.y = task.top, _position));
 					api.tasks.raise.moveEnd(model);
 					} catch (e) { console.log('gantt_chart_error', e); }
 				},
@@ -2378,7 +2380,7 @@ function instance$d($$self, $$props, $$invalidate) {
 					$$invalidate(5, _position.x = event.x, _position);
 					$$invalidate(5, _position.width = event.width, _position);
 					$$invalidate(4, _resizing = true);
-					scrollIfOutOfBounds(event.event);
+					// scrollIfOutOfBounds(event.event);
 					} catch (e) { console.log('gantt_chart_error', e); }
 				},
 				onDrag: event => {
@@ -2388,7 +2390,7 @@ function instance$d($$self, $$props, $$invalidate) {
 					$$invalidate(5, _position.y = event.y, _position);
 					$$invalidate(3, _dragging = true);
 					api.tasks.raise.move(model);
-					scrollIfOutOfBounds(event.event);
+					// scrollIfOutOfBounds(event.event);
 					} catch (e) { console.log('gantt_chart_error', e); }
 				},
 				dragAllowed: () => {
