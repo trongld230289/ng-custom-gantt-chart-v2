@@ -2257,6 +2257,7 @@ function instance$d($$self, $$props, $$invalidate) {
 					rowChangeValid = false;
 				}
 			}
+			// console.log('__gantt__', 'onDrop', _resizing, _dragging);
 			const isUserTourched = _resizing || _dragging;
 
 			$$invalidate(3, _dragging = $$invalidate(4, _resizing = false));
@@ -2370,7 +2371,7 @@ function instance$d($$self, $$props, $$invalidate) {
 					try {
 					ganttlogtaskchangedevent('gantt_drag_check', 'onMouseUp');
 					setCursor('default');
-					($$invalidate(5, _position.x = task.left, _position), $$invalidate(5, _position.width = task.width, _position), $$invalidate(5, _position.y = task.top, _position));
+					// ($$invalidate(5, _position.x = task.left, _position), $$invalidate(5, _position.width = task.width, _position), $$invalidate(5, _position.y = task.top, _position));
 					api.tasks.raise.moveEnd(model);
 					} catch (e) { console.log('gantt_chart_error', e); }
 				},
@@ -2781,7 +2782,7 @@ class TimeRange extends SvelteComponent {
 
 const MIN_DRAG_X = 2;
 const MIN_DRAG_Y = 2;
-
+var resizeTriggerssss = false;
 /**
  * Applies dragging interaction to gantt elements
  */
@@ -2868,6 +2869,7 @@ class Draggable {
 				clientY: this.offsetPos.y + event.clientY
 			};
 			this.resizeTriggered = true;
+			resizeTriggerssss= true;
 			// if (!this.resizeTriggered) { // bug resize trigger
 			// 	if (Math.abs(offsetEvent.clientX - this.initialX) > MIN_DRAG_X ||
 			// 		Math.abs(offsetEvent.clientY - this.initialY) > MIN_DRAG_Y) {
@@ -2949,6 +2951,7 @@ class Draggable {
 		};
 		this.onmouseup = (event) => {
 			try {
+			// console.log('__gantt__', 'onmouseup', this.resizeTriggered, resizeTriggerssss, this.dragging, this.resizing);
 			const offsetEvent = {
 				clientX: this.offsetPos.x + event.clientX,
 				clientY: this.offsetPos.y + event.clientY
@@ -2957,7 +2960,7 @@ class Draggable {
 			const y = this.settings.getY();
 			const width = this.settings.getWidth();
 			this.settings.onMouseUp && this.settings.onMouseUp();
-			if (this.resizeTriggered && this.settings.onDrop) {
+			if (resizeTriggerssss && this.settings.onDrop) {
 				this.settings.onDrop({
 					mouseEvent: offsetEvent,
 					x,
@@ -2976,6 +2979,7 @@ class Draggable {
 			this.initialY = null;
 			this.initialW = null;
 			this.resizeTriggered = false;
+			resizeTriggerssss = false;
 			this.offsetPos = { x: null, y: null };
 			this.offsetWidth = null;
 			this.overRezisedOffset = undefined;
