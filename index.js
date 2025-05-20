@@ -2806,6 +2806,8 @@ class Draggable {
 		this.overRezisedOffset = undefined;
         this.settings = settings;
         this.node = node;
+		this.offsetPos = offsetData.offsetPos;
+		this.offsetWidth = offsetData.offsetWidth;
         // if (this.settings.modelId) {
         //     this.offsetPos = offsetData.offsetPos;
         //     this.offsetWidth = offsetData.offsetWidth;
@@ -2989,8 +2991,7 @@ class Draggable {
 			} catch (e) { console.log('gantt_chart_error', e); }
 		};
 		 // if (this.settings.modelId) {
-            this.offsetPos = offsetData.offsetPos;
-            this.offsetWidth = offsetData.offsetWidth;
+            
         // }
         // else {
             node.addEventListener('mousedown', this.onmousedown, { passive: true });
@@ -6185,9 +6186,9 @@ function instance$5($$self, $$props, $$invalidate) {
 		const task = $taskStore.entities[taskId];
 
 		if (event.ctrlKey) {
-			selectionManager.toggleSelection(taskId);
+			selectionManager.toggleSelection(taskId, target);
 		} else {
-			selectionManager.selectSingle(taskId);
+			selectionManager.selectSingle(taskId, target);
 		}
 
 		const object = {
@@ -6215,9 +6216,9 @@ function instance$5($$self, $$props, $$invalidate) {
 		var object = { date: date, rowId: rowId };
 		
 		if (event.ctrlKey) {
-			selectionManager.toggleSelection(rowId);
+			selectionManager.toggleSelection(rowId, target);
 		} else {
-			selectionManager.selectSingle(rowId);
+			selectionManager.selectSingle(rowId, target);
 		}
 		
 		if ($selectedRow == data) {
@@ -6233,9 +6234,9 @@ function instance$5($$self, $$props, $$invalidate) {
 		const task = $taskStore.entities[taskId];
 
 		if (event.ctrlKey) {
-			selectionManager.toggleSelection(taskId);
+			selectionManager.toggleSelection(taskId, target);
 		} else {
-			selectionManager.selectSingle(taskId);
+			selectionManager.selectSingle(taskId, target);
 		}
 
 		var date = columnService.getDateByPosition(event.layerX);
