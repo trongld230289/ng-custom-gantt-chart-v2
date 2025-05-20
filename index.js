@@ -2247,16 +2247,17 @@ function instance$d($$self, $$props, $$invalidate) {
 			//row switching
 			const sourceRow = $rowStore.entities[model.resourceId];
 			
-			if (event.dragging) {
-				const targetRow = dndManager.getTarget('row', event.mouseEvent);
+			// allow dragging out of the gantt
+			// if (event.dragging) {
+			// 	const targetRow = dndManager.getTarget('row', event.mouseEvent);
 
-				if (targetRow) {
-					$$invalidate(0, model.resourceId = targetRow.model.id, model);
-					api.tasks.raise.switchRow(this, targetRow, sourceRow);
-				} else {
-					rowChangeValid = false;
-				}
-			}
+			// 	if (targetRow) {
+			// 		$$invalidate(0, model.resourceId = targetRow.model.id, model);
+			// 		api.tasks.raise.switchRow(this, targetRow, sourceRow);
+			// 	} else {
+			// 		rowChangeValid = false;
+			// 	}
+			// }
 			// console.log('__gantt__', 'onDrop', _resizing, _dragging);
 			const isUserTourched = _resizing || _dragging;
 
@@ -2297,14 +2298,14 @@ function instance$d($$self, $$props, $$invalidate) {
 
 				selectionManager.newTasksAndReflections.push(newTask);
 
-				if (isUserTourched) {
+				// if (isUserTourched) {
 					api.tasks.raise.changed({
 						task: newTask,
 						sourceRow,
 						targetRow,
 						previousState,
 					});
-				}
+				// }
 
 				// update shadow tasks
 				if (newTask.reflections) {
@@ -6324,44 +6325,44 @@ function instance$5($$self, $$props, $$invalidate) {
 	let zooming = false;
 
 	async function onwheel(event) {
-		try {
-		if (event.ctrlKey) {
-			event.preventDefault();
-			const prevZoomLevel = zoomLevel;
+		// try {
+		// if (event.ctrlKey) {
+		// 	event.preventDefault();
+		// 	const prevZoomLevel = zoomLevel;
 
-			if (event.deltaY > 0) {
-				zoomLevel = Math.max(zoomLevel - 1, 0);
-			} else {
-				zoomLevel = Math.min(zoomLevel + 1, zoomLevels.length - 1);
-			}
+		// 	if (event.deltaY > 0) {
+		// 		zoomLevel = Math.max(zoomLevel - 1, 0);
+		// 	} else {
+		// 		zoomLevel = Math.min(zoomLevel + 1, zoomLevels.length - 1);
+		// 	}
 
-			if (prevZoomLevel != zoomLevel && zoomLevels[zoomLevel]) {
-				const options = {
-					columnUnit,
-					columnOffset,
-					minWidth: $_minWidth,
-					...zoomLevels[zoomLevel]
-				};
+		// 	if (prevZoomLevel != zoomLevel && zoomLevels[zoomLevel]) {
+		// 		const options = {
+		// 			columnUnit,
+		// 			columnOffset,
+		// 			minWidth: $_minWidth,
+		// 			...zoomLevels[zoomLevel]
+		// 		};
 
-				const scale = options.minWidth / $_width;
-				const node = mainContainer;
-				const mousepos = getRelativePos(node, event);
-				const before = node.scrollLeft + mousepos.x;
-				const after = before * scale;
-				const scrollLeft = after - mousepos.x + node.clientWidth / 2;
-				$$invalidate(0, columnUnit = options.columnUnit);
-				$$invalidate(53, columnOffset = options.columnOffset);
-				set_store_value(_minWidth, $_minWidth = options.minWidth, $_minWidth);
-				if (options.headers) $$invalidate(1, headers = options.headers);
-				if (options.fitWidth) set_store_value(_fitWidth, $_fitWidth = options.fitWidth, $_fitWidth);
-				api['gantt'].raise.viewChanged();
-				$$invalidate(19, zooming = true);
-				await tick();
-				node.scrollLeft = scrollLeft;
-				$$invalidate(19, zooming = false);
-			}
-		}
-		} catch (e) { console.log('gantt_chart_error', e); }
+		// 		const scale = options.minWidth / $_width;
+		// 		const node = mainContainer;
+		// 		const mousepos = getRelativePos(node, event);
+		// 		const before = node.scrollLeft + mousepos.x;
+		// 		const after = before * scale;
+		// 		const scrollLeft = after - mousepos.x + node.clientWidth / 2;
+		// 		$$invalidate(0, columnUnit = options.columnUnit);
+		// 		$$invalidate(53, columnOffset = options.columnOffset);
+		// 		set_store_value(_minWidth, $_minWidth = options.minWidth, $_minWidth);
+		// 		if (options.headers) $$invalidate(1, headers = options.headers);
+		// 		if (options.fitWidth) set_store_value(_fitWidth, $_fitWidth = options.fitWidth, $_fitWidth);
+		// 		api['gantt'].raise.viewChanged();
+		// 		$$invalidate(19, zooming = true);
+		// 		await tick();
+		// 		node.scrollLeft = scrollLeft;
+		// 		$$invalidate(19, zooming = false);
+		// 	}
+		// }
+		// } catch (e) { console.log('gantt_chart_error', e); }
 	}
 
 	function onDateSelected(event) {
