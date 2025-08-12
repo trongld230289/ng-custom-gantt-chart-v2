@@ -2963,7 +2963,7 @@ class Draggable {
 			const y = this.settings.getY();
 			const width = this.settings.getWidth();
 			this.settings.onMouseUp && this.settings.onMouseUp();
-			if (resizeTriggerssss && this.settings.onDrop) {
+			if (resizeTriggerssss && this.settings.onDrop && this.dragging) {
 				this.settings.onDrop({
 					mouseEvent: offsetEvent,
 					x,
